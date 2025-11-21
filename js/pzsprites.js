@@ -3,7 +3,8 @@
 import { 
     World, 
     Box, 
-    Circle
+    Circle,
+    Edge
 } from "../../js/planck.mjs";
 
 let _canvas;
@@ -62,7 +63,7 @@ export function renderFrame(){
     }
 
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
-        // this.renderJoint(joint);
+        // TODO render joints
     }
    
 
@@ -82,6 +83,7 @@ export function createRectSprite(bodyProperties, width, height, fillColor, strok
 }
 
 export function createCircleSprite(bodyProperties, radius, fillColor, strokeColor){
+    
     const body = _world.createBody(bodyProperties);
     body.createFixture({
         shape: new Circle({ x: bodyProperties.position.x, y: bodyProperties.position.y }, radius)
@@ -93,24 +95,39 @@ export function createCircleSprite(bodyProperties, radius, fillColor, strokeColo
     return body;
 }
 
+export function createEdge(x1, y1, x2, y2, strokeColor){
+    const points = [{x: x1, y: y1}, {x: x2, y: y2}];
+    const body = _world.createBody({ position: points[0], type: COLLIDER_STATIC });
+    body.createFixture({
+        shape: new Edge(points[0], points[1])
+    });
+    body.setUserData({
+        fillColor: "black",
+        strokeColor: strokeColor
+    });
+    return body;
+}
+
 function renderFixture(b, f){
     const shapeType = f.getType();
     const pos = b.getPosition();
     const userData = b.getUserData();
-    if(shapeType === "polygon"){
-        const vertices = f.getShape().m_vertices.map(v => {
-            return { x: v.x + pos.x, y: v.y + pos.y }
-        });
-        drawPolygon(vertices, userData.fillColor, userData.strokeColor);
-
-    } else if(shapeType == "circle"){
+    const shape = f.getShape();
+    if(shapeType === "polygon" ){
+        drawPolygon(getPolygonAbsoluteVertices(shape, pos), userData.fillColor, userData.strokeColor);
+    } else if(shapeType === "circle"){
         drawCircle(pos.x, pos.y, f.getShape().getRadius(), userData.fillColor, userData.strokeColor);
-
+    } else if(shapeType === "edge"){
+        drawLine(shape.m_vertex1.x, shape.m_vertex1.y, shape.m_vertex2.x, shape.m_vertex2.y, userData.strokeColor);
     } else {
-        console.error("renderFixture tried to draw unimplemented shape type");
+        console.error("unrecognized shape type");
     }
-    // TODO edge and chain
+}
 
+function getPolygonAbsoluteVertices(shape, bPos){
+    return shape.m_vertices.map(v => {
+        return { x: v.x + bPos.x, y: v.y + bPos.y };
+    });
 }
 
 function drawPolygon(points, fillColor, strokeColor) {
@@ -125,7 +142,7 @@ function drawPolygon(points, fillColor, strokeColor) {
     _ctx.stroke();
     _ctx.fillStyle = fillColor;
     _ctx.fill();
-  }
+}
 
 export function drawLine(x1, y1, x2, y2, color){
     _ctx.beginPath();

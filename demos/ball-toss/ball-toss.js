@@ -2,7 +2,9 @@
 
 import {
     COLLIDER_DYNAMIC,
+    COLLIDER_STATIC,
     createCircleSprite,
+    createEdge,
     createRectSprite,
     renderFrame,
     setupWorld
@@ -36,6 +38,12 @@ async function start() {
         type: COLLIDER_DYNAMIC,
     }, 20, "green", "black");
 
+    // let floor = createEdge(0, CANVAS_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT, "black");
+
+    let floor = createRectSprite({
+        position: { x: 0, y: 400 },
+        type: COLLIDER_STATIC
+    }, 500, 10, "orange", "black");
 
     // createRandomObstacles(8);
 
