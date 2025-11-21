@@ -1,6 +1,10 @@
 // v0.1 - physics provided by planck.js
 
-import { World, Box } from "../../js/planck.mjs";
+import { 
+    World, 
+    Box, 
+    Circle
+} from "../../js/planck.mjs";
 
 let _canvas;
 let _ctx;
@@ -65,13 +69,26 @@ export function renderFrame(){
 }
 
 
-export function createRectSprite(bodyProperties, width, height, color){
+export function createRectSprite(bodyProperties, width, height, fillColor, strokeColor){
     const body = _world.createBody(bodyProperties);
     body.createFixture({
         shape: new Box(width / 2, height / 2)
     });
     body.setUserData({
-        color: color
+        fillColor: fillColor,
+        strokeColor: strokeColor
+    });
+    return body;
+}
+
+export function createCircleSprite(bodyProperties, radius, fillColor, strokeColor){
+    const body = _world.createBody(bodyProperties);
+    body.createFixture({
+        shape: new Circle({ x: bodyProperties.position.x, y: bodyProperties.position.y }, radius)
+    });
+    body.setUserData({
+        fillColor: fillColor,
+        strokeColor: strokeColor
     });
     return body;
 }
@@ -79,13 +96,15 @@ export function createRectSprite(bodyProperties, width, height, color){
 function renderFixture(b, f){
     const shapeType = f.getType();
     const pos = b.getPosition();
+    const userData = b.getUserData();
     if(shapeType === "polygon"){
-        const vertices = f.m_shape.m_vertices.map(v => {
+        const vertices = f.getShape().m_vertices.map(v => {
             return { x: v.x + pos.x, y: v.y + pos.y }
         });
-        drawPolygon(vertices, "blue", "black");
+        drawPolygon(vertices, userData.fillColor, userData.strokeColor);
 
     } else if(shapeType == "circle"){
+        drawCircle(pos.x, pos.y, f.getShape().getRadius(), userData.fillColor, userData.strokeColor);
 
     } else {
         console.error("renderFixture tried to draw unimplemented shape type");
@@ -132,12 +151,14 @@ function drawDebugRect(r){
     _ctx.strokeRect(r.x, r.y, r.width, r.height);
 }
 
-export function drawCircle (x, y, radius, color) {
+export function drawCircle (x, y, radius, fillColor, strokeColor) {
     _ctx.beginPath();
     // arc(x, y, radius, startAngle, endAngle)
     _ctx.arc(x, y, radius, 0, 2 * Math.PI);
-    _ctx.fillStyle = color;
+    _ctx.fillStyle = fillColor;
     _ctx.fill();
+    _ctx.strokeStyle = strokeColor;
+    _ctx.stroke();
 }
 
 function drawDebugCircle(s){

@@ -2,6 +2,7 @@
 
 import {
     COLLIDER_DYNAMIC,
+    createCircleSprite,
     createRectSprite,
     renderFrame,
     setupWorld
@@ -10,9 +11,9 @@ import {
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 500;
 
-const BALL_MOUSE_FOLLOW_SPEED = 2;
-const BALL_BOUNCE_SPEED_LOSS = 2; // higher number => less bouncy
-const BALL_GRAVITY = 0.4;
+// const BALL_MOUSE_FOLLOW_SPEED = 2;
+// const BALL_BOUNCE_SPEED_LOSS = 2; // higher number => less bouncy
+// const BALL_GRAVITY = 0.4;
 
 window.onload = start;
 
@@ -28,7 +29,12 @@ async function start() {
     let box = createRectSprite({
         position: { x: 100, y: 150 },
         type: COLLIDER_DYNAMIC,
-    }, 100, 100, "blue");
+    }, 100, 100, "red", "black");
+
+    let ball = createCircleSprite({
+        position: { x: 200, y: 300 },
+        type: COLLIDER_DYNAMIC,
+    }, 20, "green", "black");
 
 
     // createRandomObstacles(8);
