@@ -1,15 +1,24 @@
 // v0.1 - physics provided by planck.js
 
-import { World } from "../../js/planck.mjs";
+import { World, Box } from "../../js/planck.mjs";
 
 let _canvas;
 let _ctx;
 
 let _world;
 
-const _sprites = [];
-
 export const TIME_STEP = 1 / 60;
+
+export const COLLIDER_STATIC = "static";
+export const COLLIDER_KINEMATIC = "kinematic";
+export const COLLIDER_DYNAMIC = "dynamic";
+
+// static - A static body does not move under simulation and behaves as if it has infinite mass. Internally, Planck.js stores zero for the mass and the inverse mass. Static bodies can be moved manually by the user. A static body always has zero velocity. Static bodies do not collide with other static or kinematic bodies.
+
+// kinematic - A kinematic body is like a static body, but can have velocity. You can set kinematic body velocity or move it manually. However, their velocity is not changed in collision or when you apply force. Kinematic bodies do not collide with other kinematic or static bodies. When a kinematic body collides with a dynamic body it behaves as if it has infinite mass.
+
+// dynamic - A dynamic body is fully simulated. They can be moved manually by the user, but normally they move according to forces. A dynamic body can collide with all body types. A dynamic body always has finite, non-zero mass. If you try to set the mass of a dynamic body to zero, it will automatically acquire a mass of one kilogram and it won't rotate.
+
 
 function setupCanvas (cvs, width, height){
     _canvas = cvs;
@@ -20,7 +29,7 @@ function setupCanvas (cvs, width, height){
 
 export function setupWorld(canvasId, width, height, worldDef){
     setupCanvas(document.getElementById(canvasId), width, height);
-    const wd = worldDef === undefined ? { gravity: {x: 0, y: -10}, allowSleep: true } : worldDef;
+    const wd = worldDef === undefined ? { gravity: {x: 0, y: 10}, allowSleep: true } : worldDef;
     _world = new World(wd);
 
     _world.on('remove-joint', function(joint) {
@@ -38,31 +47,66 @@ export function setupWorld(canvasId, width, height, worldDef){
 }
 
 export function renderFrame(){
+    clearCanvas();
+    drawBorder();
     _world.step(TIME_STEP);
 
-     // Iterate over bodies
-     for (let body = _world.getBodyList(); body; body = body.getNext()) {
-        // this.renderBody(body);
-        // ... and fixtures
+    for (let body = _world.getBodyList(); body; body = body.getNext()) {
         for (let fixture = body.getFixtureList(); fixture; fixture = fixture.getNext()) {
-        //   this.renderFixture(fixture);
+            renderFixture(body, fixture);
         }
-      }
-   
-      // Iterate over joints
-      for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
+    }
+
+    for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
         // this.renderJoint(joint);
-      }
+    }
    
 
 }
 
-/** draws all sprites  */
-export function drawSprites(){
-    _sprites.forEach(s => {
-        s.draw(s);
+
+export function createRectSprite(bodyProperties, width, height, color){
+    const body = _world.createBody(bodyProperties);
+    body.createFixture({
+        shape: new Box(width / 2, height / 2)
     });
+    body.setUserData({
+        color: color
+    });
+    return body;
 }
+
+function renderFixture(b, f){
+    const shapeType = f.getType();
+    const pos = b.getPosition();
+    if(shapeType === "polygon"){
+        const vertices = f.m_shape.m_vertices.map(v => {
+            return { x: v.x + pos.x, y: v.y + pos.y }
+        });
+        drawPolygon(vertices, "blue", "black");
+
+    } else if(shapeType == "circle"){
+
+    } else {
+        console.error("renderFixture tried to draw unimplemented shape type");
+    }
+    // TODO edge and chain
+
+}
+
+function drawPolygon(points, fillColor, strokeColor) {
+    // h/t planck testbed
+    _ctx.beginPath();
+    _ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+        _ctx.lineTo(points[i].x, points[i].y);
+    }
+    _ctx.closePath();
+    _ctx.strokeStyle = strokeColor;
+    _ctx.stroke();
+    _ctx.fillStyle = fillColor;
+    _ctx.fill();
+  }
 
 export function drawLine(x1, y1, x2, y2, color){
     _ctx.beginPath();
@@ -234,37 +278,20 @@ export function getRandom8BitIntegerAsHexString(){
 //     return sprite;
 // }
 
-export function createSprite(x, y, dx, dy, color, drawFn, findEdgesFn){
-    const sprite = {
-        x: x,
-        y: y,
-        dx: dx,
-        dy: dy,
-        color: color,
-        leftEdge: 0,
-        rightEdge: 0,
-        topEdge: 0,
-        bottomEdge: 0,
-        draw: drawFn,
-        findEdges: findEdgesFn
-    };
-    _sprites.push(sprite);
-    return sprite;
-}
 
 /** applies dx and dy to the x and y of each sprite, draws the sprite, and finds the new edges */
-export function moveAndDrawSprites(){
-    _sprites.forEach(s => {
-        s.x += s.dx;
-        s.y += s.dy;
-        s.draw(s);
-        const edges = s.findEdges(s);
-        s.leftEdge = edges.leftEdge;
-        s.rightEdge = edges.rightEdge;
-        s.topEdge = edges.topEdge;
-        s.bottomEdge = edges.bottomEdge
-    });
-}
+// export function moveAndDrawSprites(){
+//     _sprites.forEach(s => {
+//         s.x += s.dx;
+//         s.y += s.dy;
+//         s.draw(s);
+//         const edges = s.findEdges(s);
+//         s.leftEdge = edges.leftEdge;
+//         s.rightEdge = edges.rightEdge;
+//         s.topEdge = edges.topEdge;
+//         s.bottomEdge = edges.bottomEdge
+//     });
+// }
 
 export function removeSprite(sprite){
     _sprites.splice(_sprites.indexOf(sprite), 1);
