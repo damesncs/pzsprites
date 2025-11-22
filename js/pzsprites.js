@@ -70,10 +70,14 @@ export function renderFrame(){
 }
 
 
-export function createRectSprite(bodyProperties, width, height, fillColor, strokeColor){
-    const body = _world.createBody(bodyProperties);
+export function createRectSprite(colliderType, initialX, initialY, width, height, fillColor, strokeColor){
+    const body = _world.createBody({
+        position: { x: initialX, y: initialY },
+        type: colliderType
+    });
     body.createFixture({
-        shape: new Box(width / 2, height / 2)
+            shape: new Box(width / 2, height / 2),
+            density: 1
     });
     body.setUserData({
         fillColor: fillColor,
@@ -82,11 +86,15 @@ export function createRectSprite(bodyProperties, width, height, fillColor, strok
     return body;
 }
 
-export function createCircleSprite(bodyProperties, radius, fillColor, strokeColor){
-    
-    const body = _world.createBody(bodyProperties);
+
+
+export function createCircleSprite(colliderType, initialX, initialY, radius, fillColor, strokeColor){
+    const body = _world.createBody({
+        position: { x: initialX, y: initialY },
+        type: colliderType
+    });
     body.createFixture({
-        shape: new Circle({ x: bodyProperties.position.x, y: bodyProperties.position.y }, radius)
+        shape: new Circle({ x: initialX, y: initialY }, radius)
     });
     body.setUserData({
         fillColor: fillColor,
@@ -116,7 +124,7 @@ function renderFixture(b, f){
     if(shapeType === "polygon" ){
         drawPolygon(getPolygonAbsoluteVertices(shape, pos), userData.fillColor, userData.strokeColor);
     } else if(shapeType === "circle"){
-        drawCircle(pos.x, pos.y, f.getShape().getRadius(), userData.fillColor, userData.strokeColor);
+        drawCircle(shape.m_p.x, shape.m_p.y, shape.m_radius, userData.fillColor, userData.strokeColor);
     } else if(shapeType === "edge"){
         drawLine(shape.m_vertex1.x, shape.m_vertex1.y, shape.m_vertex2.x, shape.m_vertex2.y, userData.strokeColor);
     } else {
