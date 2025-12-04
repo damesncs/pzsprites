@@ -93,7 +93,7 @@ export function createCircleSprite(colliderType, initialX, initialY, radius, fil
         type: colliderType
     });
     body.createFixture({
-        shape: new Circle({ x: initialX, y: initialY }, radius)
+        shape: new Circle({ x: 0, y: 0 }, radius)
     });
     body.setUserData({
         fillColor: fillColor,
