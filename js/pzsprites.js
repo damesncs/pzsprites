@@ -69,10 +69,14 @@ export function renderFrame(){
 }
 
 
-export function createRectSprite(bodyProperties, width, height, fillColor, strokeColor){
-    const body = _world.createBody(bodyProperties);
+export function createRectSprite(colliderType, initialX, initialY, width, height, fillColor, strokeColor){
+    const body = _world.createBody({
+        position: { x: initialX, y: initialY },
+        type: colliderType
+    });
     body.createFixture({
-        shape: new Box(width / 2, height / 2)
+            shape: new Box(width / 2, height / 2),
+            density: 1
     });
     body.setUserData({
         fillColor: fillColor,
@@ -81,14 +85,16 @@ export function createRectSprite(bodyProperties, width, height, fillColor, strok
     return body;
 }
 
-export function createCircleSprite(bodyProperties, radius, fillColor, strokeColor){
-    const body = _world.createBody(bodyProperties);
-    body.createFixture(
-        new Circle({ x: 0, y: 0 }, radius),
-        {
-            // fixdef here
-        }
-    );
+
+
+export function createCircleSprite(colliderType, initialX, initialY, radius, fillColor, strokeColor){
+    const body = _world.createBody({
+        position: { x: initialX, y: initialY },
+        type: colliderType
+    });
+    body.createFixture({
+        shape: new Circle({ x: initialX, y: initialY }, radius)
+    });
     body.setUserData({
         fillColor: fillColor,
         strokeColor: strokeColor

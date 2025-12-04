@@ -28,22 +28,11 @@ let mouseDragging = false;
 async function start() {
     setupWorld("canvas", CANVAS_WIDTH, CANVAS_HEIGHT);
     
-    let box = createRectSprite({
-        position: { x: 100, y: 150 },
-        type: COLLIDER_DYNAMIC,
-    }, 100, 100, "red", "black");
+    let box = createRectSprite(COLLIDER_DYNAMIC, 100, 100, 40, 40, "red", "black");
 
-    let ball = createCircleSprite({
-        position: { x: 200, y: 300 },
-        type: COLLIDER_DYNAMIC,
-    }, 20, "green", "black");
+    let ball = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20, "green", "black");
 
-    // let floor = createEdge(0, CANVAS_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT, "black");
-
-    let floor = createRectSprite({
-        position: { x: 0, y: 400 },
-        type: COLLIDER_STATIC
-    }, 500, 10, "orange", "black");
+    let floor = createRectSprite(COLLIDER_STATIC, 0, 400, 400, 10, "orange", "black");
 
     // createRandomObstacles(8);
 
