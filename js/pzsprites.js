@@ -65,7 +65,6 @@ export function renderFrame(){
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
         // TODO render joints
     }
-   
 
 }
 
@@ -83,11 +82,13 @@ export function createRectSprite(bodyProperties, width, height, fillColor, strok
 }
 
 export function createCircleSprite(bodyProperties, radius, fillColor, strokeColor){
-    
     const body = _world.createBody(bodyProperties);
-    body.createFixture({
-        shape: new Circle({ x: bodyProperties.position.x, y: bodyProperties.position.y }, radius)
-    });
+    body.createFixture(
+        new Circle({ x: 0, y: 0 }, radius),
+        {
+            // fixdef here
+        }
+    );
     body.setUserData({
         fillColor: fillColor,
         strokeColor: strokeColor
@@ -116,7 +117,7 @@ function renderFixture(b, f){
     if(shapeType === "polygon" ){
         drawPolygon(getPolygonAbsoluteVertices(shape, pos), userData.fillColor, userData.strokeColor);
     } else if(shapeType === "circle"){
-        drawCircle(pos.x, pos.y, f.getShape().getRadius(), userData.fillColor, userData.strokeColor);
+        drawCircle(pos.x, pos.y, shape.m_radius, userData.fillColor, userData.strokeColor);
     } else if(shapeType === "edge"){
         drawLine(shape.m_vertex1.x, shape.m_vertex1.y, shape.m_vertex2.x, shape.m_vertex2.y, userData.strokeColor);
     } else {
