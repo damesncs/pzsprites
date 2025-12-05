@@ -65,7 +65,7 @@ export function renderFrame(){
     }
 
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
-        // TODO render joints
+        // TODO render joints - probably just a line
     }
 
 }
@@ -158,25 +158,16 @@ function getPolygonAbsoluteVertices(body, shape){
 
 function drawPolygon(points, fillColor, strokeColor) {
     // h/t planck testbed
-
     _ctx.beginPath();
     _ctx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) {
         _ctx.lineTo(points[i].x, points[i].y);
     }
     _ctx.closePath();
-    // if(rotationRadians !== 0){
-    //     // h/t MDN canvas docs
-    //     _ctx.translate(rotateRefX, rotateRefY);
-    //     _ctx.rotate(rotationRadians);
-    //     _ctx.translate(-rotateRefX, -rotateRefY);
-        
-    // }
     _ctx.strokeStyle = strokeColor;
     _ctx.stroke();
     _ctx.fillStyle = fillColor;
     _ctx.fill();
-    // _ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 export function drawLine(x1, y1, x2, y2, color){
