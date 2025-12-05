@@ -14,16 +14,18 @@ let _world;
 
 export const TIME_STEP = 1 / 60;
 
+/** planck.js docs - A static body does not move under simulation and behaves as if it has infinite mass. Internally, Planck.js stores zero for the mass and the inverse mass. Static bodies can be moved manually by the user. A static body always has zero velocity. Static bodies do not collide with other static or kinematic bodies. */
 export const COLLIDER_STATIC = "static";
+
+/** planck.js docs - A kinematic body is like a static body, but can have velocity. You can set kinematic body velocity or move it manually. However, their velocity is not changed in collision or when you apply force. Kinematic bodies do not collide with other kinematic or static bodies. When a kinematic body collides with a dynamic body it behaves as if it has infinite mass. */
 export const COLLIDER_KINEMATIC = "kinematic";
+
+/** planck.js docs - A dynamic body is fully simulated. They can be moved manually by the user, but normally they move according to forces. A dynamic body can collide with all body types. A dynamic body always has finite, non-zero mass. If you try to set the mass of a dynamic body to zero, it will automatically acquire a mass of one kilogram and it won't rotate. */
 export const COLLIDER_DYNAMIC = "dynamic";
 
-// static - A static body does not move under simulation and behaves as if it has infinite mass. Internally, Planck.js stores zero for the mass and the inverse mass. Static bodies can be moved manually by the user. A static body always has zero velocity. Static bodies do not collide with other static or kinematic bodies.
-
-// kinematic - A kinematic body is like a static body, but can have velocity. You can set kinematic body velocity or move it manually. However, their velocity is not changed in collision or when you apply force. Kinematic bodies do not collide with other kinematic or static bodies. When a kinematic body collides with a dynamic body it behaves as if it has infinite mass.
-
-// dynamic - A dynamic body is fully simulated. They can be moved manually by the user, but normally they move according to forces. A dynamic body can collide with all body types. A dynamic body always has finite, non-zero mass. If you try to set the mass of a dynamic body to zero, it will automatically acquire a mass of one kilogram and it won't rotate.
-
+const SHAPE_TYPE_POLYGON = "polygon";
+const SHAPE_TYPE_CIRCLE = "circle";
+const SHAPE_TYPE_EDGE = "edge";
 
 function setupCanvas (cvs, width, height){
     _canvas = cvs;
@@ -131,40 +133,50 @@ export function createEdge(x1, y1, x2, y2, strokeColor){
     return body;
 }
 
+
 function renderFixture(b, f){
     const shapeType = f.getType();
     const pos = b.getPosition();
-    const userData = b.getUserData();
+    const ud = b.getUserData();
     const shape = f.getShape();
-    if(shapeType === "polygon" ){
-        drawPolygon(getPolygonAbsoluteVertices(shape, pos), userData.fillColor, userData.strokeColor);
-    } else if(shapeType === "circle"){
-        drawCircle(pos.x, pos.y, shape.m_radius, userData.fillColor, userData.strokeColor);
-    } else if(shapeType === "edge"){
-        drawLine(shape.m_vertex1.x, shape.m_vertex1.y, shape.m_vertex2.x, shape.m_vertex2.y, userData.strokeColor);
+    if(shapeType === SHAPE_TYPE_POLYGON){
+        drawPolygon(getPolygonAbsoluteVertices(b, shape), ud.fillColor, ud.strokeColor);
+    } else if(shapeType === SHAPE_TYPE_CIRCLE){
+        drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor);
+    } else if(shapeType === SHAPE_TYPE_EDGE){
+        drawLine(shape.m_vertex1.x, shape.m_vertex1.y, shape.m_vertex2.x, shape.m_vertex2.y, ud.strokeColor);
     } else {
         console.error("unrecognized shape type");
     }
 }
 
-function getPolygonAbsoluteVertices(shape, bPos){
+function getPolygonAbsoluteVertices(body, shape){
     return shape.m_vertices.map(v => {
-        return { x: v.x + bPos.x, y: v.y + bPos.y };
+        return body.getWorldPoint(v);
     });
 }
 
 function drawPolygon(points, fillColor, strokeColor) {
     // h/t planck testbed
+
     _ctx.beginPath();
     _ctx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) {
         _ctx.lineTo(points[i].x, points[i].y);
     }
     _ctx.closePath();
+    // if(rotationRadians !== 0){
+    //     // h/t MDN canvas docs
+    //     _ctx.translate(rotateRefX, rotateRefY);
+    //     _ctx.rotate(rotationRadians);
+    //     _ctx.translate(-rotateRefX, -rotateRefY);
+        
+    // }
     _ctx.strokeStyle = strokeColor;
     _ctx.stroke();
     _ctx.fillStyle = fillColor;
     _ctx.fill();
+    // _ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 export function drawLine(x1, y1, x2, y2, color){
