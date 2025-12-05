@@ -53,6 +53,7 @@ export function setupWorld(canvasId, width, height, worldDef){
 
 }
 
+/** Steps the physics simulation and draws all bodies. Be sure to call this in your animation loop. */
 export function renderFrame(){
     clearCanvas();
     drawBorder();
@@ -102,7 +103,8 @@ function createSprite(colliderType, initialX, initialY, shape){
     });
     body.setUserData({
         fillColor: getRandomColorHexString(),
-        strokeColor: "black"
+        strokeColor: "black",
+        debug: false
     });
     body.setBounciness = (bounciness) => {
         body.getFixtureList().setRestitution(bounciness);
@@ -115,6 +117,11 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.setStrokeColor = (color) => {
         let ud = body.getUserData();
         ud.strokeColor = color;
+        body.setUserData(ud);
+    };
+    body.setDebug = (debug) => {
+        let ud = body.getUserData();
+        ud.debug = debug;
         body.setUserData(ud);
     }
     return body;
@@ -147,6 +154,9 @@ function renderFixture(b, f){
         drawLine(shape.m_vertex1.x, shape.m_vertex1.y, shape.m_vertex2.x, shape.m_vertex2.y, ud.strokeColor);
     } else {
         console.error("unrecognized shape type");
+    }
+    if(b.getUserData().debug === true){
+        drawCircle(pos.x, pos.y, 3, "limegreen", "limegreen");
     }
 }
 

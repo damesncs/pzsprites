@@ -19,7 +19,7 @@ window.onload = start;
 const ballSprites = [];
 const obstacleSprites = [];
 
-let box;
+let box, ball, floor;
 
 let mouseX = 0, mouseY = 0;
 let mouseDragging = false;
@@ -28,12 +28,15 @@ async function start() {
     setupWorld("canvas", CANVAS_WIDTH, CANVAS_HEIGHT);
     
     box = createRectSprite(COLLIDER_DYNAMIC, 100, 100, 40, 40);
+    box.setDebug(true);
 
-    let ball = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
+    ball = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
+    ball.setDebug(true);
     ball.setBounciness(0.5);
     ball.setFillColor("red");
 
-    let floor = createRectSprite(COLLIDER_STATIC, 0, 400, 400, 10);
+    floor = createRectSprite(COLLIDER_STATIC, 200, 400, 400, 10);
+    floor.setDebug(true);
 
     createRandomObstacles(8);
 
@@ -46,8 +49,13 @@ async function start() {
 
 function drawFrame(timestamp){
 
+    ballSprites.forEach(b => {
+        if(b.dragging){
+          // TODO apply force  
+        }
+    })
+
     renderFrame();
-    
     window.requestAnimationFrame(drawFrame);
 }
 function createNewBall(isDragging){
