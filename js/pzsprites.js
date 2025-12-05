@@ -34,7 +34,7 @@ function setupCanvas (cvs, width, height){
 
 export function setupWorld(canvasId, width, height, worldDef){
     setupCanvas(document.getElementById(canvasId), width, height);
-    const wd = worldDef === undefined ? { gravity: {x: 0, y: 10}, allowSleep: true } : worldDef;
+    const wd = worldDef === undefined ? { gravity: {x: 0, y: 50}, allowSleep: true } : worldDef;
     _world = new World(wd);
 
     _world.on('remove-joint', function(joint) {
@@ -68,37 +68,53 @@ export function renderFrame(){
 
 }
 
-
-export function createRectSprite(colliderType, initialX, initialY, width, height, fillColor, strokeColor){
-    const body = _world.createBody({
-        position: { x: initialX, y: initialY },
-        type: colliderType
-    });
-    body.createFixture({
-            shape: new Box(width / 2, height / 2),
-            density: 1
-    });
-    body.setUserData({
-        fillColor: fillColor,
-        strokeColor: strokeColor
-    });
-    return body;
+/** creates a rectangular sprite
+ * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
+ * @param {number} initialX the sprite's beginning x position
+ * @param {number} initialY the sprite's beginning y position
+ * @param {number} height the sprite's beginning height
+ * @param {number} width the sprite's beginning width
+ * 
+ */
+export function createRectSprite(colliderType, initialX, initialY, width, height){
+    let shape = new Box(width / 2, height / 2);
+    let sprite = createSprite(colliderType, initialX, initialY, shape);
+    return sprite;
 }
 
+export function createCircleSprite(colliderType, initialX, initialY, radius){    
+    let shape = new Circle({ x: 0, y: 0 }, radius);
+    let sprite = createSprite(colliderType, initialX, initialY, shape);
+    return sprite;
+}
 
-
-export function createCircleSprite(colliderType, initialX, initialY, radius, fillColor, strokeColor){
+function createSprite(colliderType, initialX, initialY, shape){
     const body = _world.createBody({
         position: { x: initialX, y: initialY },
         type: colliderType
     });
     body.createFixture({
-        shape: new Circle({ x: 0, y: 0 }, radius)
+        shape: shape,
+        density: 1,
+        restitution: 0.1
     });
     body.setUserData({
-        fillColor: fillColor,
-        strokeColor: strokeColor
+        fillColor: getRandomColorHexString(),
+        strokeColor: "black"
     });
+    body.setBounciness = (bounciness) => {
+        body.getFixtureList().setRestitution(bounciness);
+    };
+    body.setFillColor = (color) => {
+        let ud = body.getUserData();
+        ud.fillColor = color;
+        body.setUserData(ud);
+    };
+    body.setStrokeColor = (color) => {
+        let ud = body.getUserData();
+        ud.strokeColor = color;
+        body.setUserData(ud);
+    }
     return body;
 }
 
