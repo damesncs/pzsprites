@@ -85,10 +85,19 @@ export function createRectSprite(colliderType, initialX, initialY, width, height
     return sprite;
 }
 
-export function createCircleSprite(colliderType, initialX, initialY, radius){    
+export function createCircleSprite(colliderType, initialX, initialY, radius, debug = false){    
     let shape = new Circle({ x: 0, y: 0 }, radius);
     let sprite = createSprite(colliderType, initialX, initialY, shape);
+    if (debug) sprite.createFixture({
+        shape: new Box(radius, 1)
+    });
     return sprite;
+}
+
+export function createEdgeSprite(colliderType, x1, y1, x2, y2){
+    const shape = new Edge({ x: x1, y: y1 }, { x: x2, y: y2 });
+    // return createSprite(colliderType, x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2, shape);
+    return createSprite(colliderType, 0, 0, shape);
 }
 
 function createSprite(colliderType, initialX, initialY, shape){
@@ -127,20 +136,6 @@ function createSprite(colliderType, initialX, initialY, shape){
     return body;
 }
 
-export function createEdge(x1, y1, x2, y2, strokeColor){
-    const points = [{x: x1, y: y1}, {x: x2, y: y2}];
-    const body = _world.createBody({ position: points[0], type: COLLIDER_STATIC });
-    body.createFixture({
-        shape: new Edge(points[0], points[1])
-    });
-    body.setUserData({
-        fillColor: "black",
-        strokeColor: strokeColor
-    });
-    return body;
-}
-
-
 function renderFixture(b, f){
     const shapeType = f.getType();
     const pos = b.getPosition();
@@ -156,6 +151,7 @@ function renderFixture(b, f){
         console.error("unrecognized shape type");
     }
     if(b.getUserData().debug === true){
+        // draw body center
         drawCircle(pos.x, pos.y, 3, "limegreen", "limegreen");
     }
 }

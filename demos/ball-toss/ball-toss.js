@@ -4,11 +4,11 @@ import {
     COLLIDER_DYNAMIC,
     COLLIDER_STATIC,
     createCircleSprite,
-    createEdge,
     createRectSprite,
     renderFrame,
     getRandomColorHexString,
-    setupWorld
+    setupWorld,
+    createEdgeSprite
 } from "../../js/pzsprites.js";
 
 const CANVAS_WIDTH = 800;
@@ -19,24 +19,28 @@ window.onload = start;
 const ballSprites = [];
 const obstacleSprites = [];
 
-let box, ball, floor;
+let box, ball, ledge;
+
+let draggingBall;
 
 let mouseX = 0, mouseY = 0;
 let mouseDragging = false;
+
 
 async function start() {
     setupWorld("canvas", CANVAS_WIDTH, CANVAS_HEIGHT);
     
     box = createRectSprite(COLLIDER_DYNAMIC, 100, 100, 40, 40);
-    box.setDebug(true);
+    // box.setDebug(true);
 
-    ball = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
-    ball.setDebug(true);
+    ball = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20, true);
+    // ball.setDebug(true);
     ball.setBounciness(0.5);
-    ball.setFillColor("red");
+    ball.setFillColor("#ffffff00");
 
-    floor = createRectSprite(COLLIDER_STATIC, 200, 400, 400, 10);
-    floor.setDebug(true);
+    ledge = createRectSprite(COLLIDER_STATIC, 200, 400, 400, 10);
+    
+    createEdgeSprite(COLLIDER_STATIC, 0, CANVAS_HEIGHT - 50, CANVAS_WIDTH, CANVAS_HEIGHT - 50);
 
     createRandomObstacles(8);
 
@@ -48,20 +52,20 @@ async function start() {
 }
 
 function drawFrame(timestamp){
-
-    ballSprites.forEach(b => {
-        if(b.dragging){
-          // TODO apply force  
-        }
-    })
+    if(mouseDragging && draggingBall){
+        // draggingBall.setPosition({ x: mouseX, y: mouseY });
+        const center = draggingBall.getPosition();
+        draggingBall.applyForceToCenter({ x: 20, y: 20 });
+    }
 
     renderFrame();
     window.requestAnimationFrame(drawFrame);
 }
+
 function createNewBall(isDragging){
     let newBall = createCircleSprite(COLLIDER_DYNAMIC, mouseX, mouseY, 15);
     newBall.setBounciness(0.3);
-    newBall.dragging = isDragging;
+    if(isDragging) draggingBall = newBall;
     ballSprites.push(newBall);
 }
 
@@ -88,7 +92,6 @@ function onMouseMove(e){
 
 function onMouseUp(e){
     mouseDragging = false;
-    ballSprites.forEach(b => b.dragging = false);
 }
 
 function onMouseDown(e){
