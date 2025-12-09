@@ -34,6 +34,13 @@ function setupCanvas (cvs, width, height){
     _ctx = _canvas.getContext("2d");
 }
 
+/**
+ * Performs initial setup of the physics world and the graphics canvas.
+ * @param {string} canvasId the id of the canvas element
+ * @param {number} width width of the canvas
+ * @param {number} height height of the canvas
+ * @param {object} worldDef options for the physics world (planck.js World constructor)
+ */
 export function setupWorld(canvasId, width, height, worldDef){
     setupCanvas(document.getElementById(canvasId), width, height);
     const wd = worldDef === undefined ? { gravity: {x: 0, y: 50}, allowSleep: true } : worldDef;
@@ -49,8 +56,6 @@ export function setupWorld(canvasId, width, height, worldDef){
         // bodies are not removed implicitly,
         // but the world publishes this event if a body is removed
     });
-
-
 }
 
 /** Steps the physics simulation and draws all bodies. Be sure to call this in your animation loop. */
@@ -68,16 +73,15 @@ export function renderFrame(){
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
         // TODO render joints - probably just a line
     }
-
 }
 
-/** creates a rectangular sprite
+/** Creates a rectangular sprite
  * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
  * @param {number} initialX the sprite's beginning x position
  * @param {number} initialY the sprite's beginning y position
  * @param {number} height the sprite's beginning height
  * @param {number} width the sprite's beginning width
- * 
+ * @returns a reference to the new sprite (the planck.js Body)
  */
 export function createRectSprite(colliderType, initialX, initialY, width, height){
     let shape = new Box(width / 2, height / 2);
@@ -87,6 +91,13 @@ export function createRectSprite(colliderType, initialX, initialY, width, height
     return sprite;
 }
 
+/** Creates a circle sprite
+ * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
+ * @param {number} initialX the sprite's beginning x position
+ * @param {number} initialY the sprite's beginning y position
+ * @param {number} radius the circle sprite's radius
+ * @returns a reference to the new sprite (the planck.js Body)
+ */
 export function createCircleSprite(colliderType, initialX, initialY, radius){    
     let shape = new Circle({ x: 0, y: 0 }, radius);
     let sprite = createSprite(colliderType, initialX, initialY, shape);
@@ -94,6 +105,15 @@ export function createCircleSprite(colliderType, initialX, initialY, radius){
     return sprite;
 }
 
+/**
+ * Creates an edge sprite. Edges are usually walls.
+ * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
+ * @param {number} x1 
+ * @param {number} y1 
+ * @param {number} x2 
+ * @param {number} y2 
+ * @returns a reference to the new sprite (the planck.js Body)
+ */
 export function createEdgeSprite(colliderType, x1, y1, x2, y2){
     const shape = new Edge({ x: x1, y: y1 }, { x: x2, y: y2 });
     return createSprite(colliderType, 0, 0, shape);
@@ -268,191 +288,42 @@ export function getRandom8BitIntegerAsHexString(){
     return Math.trunc(Math.random() * 256).toString(16).padStart(2, 0);
 }
 
-// function getRectEdges (rect) {
-//     return {
-//         leftEdge: rect.x,
-//         rightEdge: rect.x + rect.width,
-//         topEdge: rect.y,
-//         bottomEdge: rect.y + rect.height
-//     }
+// export function removeSprite(sprite){
+//     _sprites.splice(_sprites.indexOf(sprite), 1);
 // }
 
-// function getCircleEdges(circle) {
-//     return {
-//         leftEdge: circle.x - circle.radius,
-//         rightEdge: circle.x + circle.radius,
-//         topEdge: circle.y - circle.radius,
-//         bottomEdge: circle.y + circle.radius
-//     }
-// }
 
-// export function createRectSprite(x, y, dx, dy, width, height, color, debug = false){
-//     const draw = (r) => {
-//         drawRect(r.x, r.y, r.width, r.height, r.color);
-//         if(r.debug){
-//             drawDebugRect(r);
+// export function drawShapesObj(sObj, originX = 0, originY = 0, scale = 1, debug = false){
+//     try {
+//         if(debug){
+//             _ctx.strokeStyle = "limegreen";
+//             _ctx.strokeRect(originX, originY, sObj.nativeWidth * scale, sObj.nativeHeight * scale);
 //         }
+//         sObj.shapes.forEach((s, i) => {
+//             if(s.type){
+//                 const shapeX = originX + s.x * scale;
+//                 const shapeY = originY + s.y * scale;
+//                 switch(s.type) {
+//                     case SHAPE_TYPE_RECT:
+//                         drawRect(shapeX, shapeY, s.w * scale, s.h * scale, s.constantColor);
+//                         break;
+//                     case SHAPE_TYPE_CIRC:
+//                         drawCircle(shapeX, shapeY, s.r * scale, s.constantColor);
+//                         break;
+//                     case SHAPE_TYPE_POINT: // designer only
+//                         drawCircle(shapeX, shapeY, POINT_RADIUS, POINT_COLOR);
+//                         break;
+//                 }
+//             }
+//             else {
+//                 throw new Error("no shape type for shape at index " + i);
+//             }
+//         });
 //     }
-//     let sprite = createSprite(x, y, dx, dy, color, draw, getRectEdges);
-//     sprite.width = width;
-//     sprite.height = height;
-//     sprite.debug = debug;
-//     return sprite;
-// }
-
-// export function createCircleSprite(x, y, dx, dy, radius, color, debug = false){
-//     const draw = (c) => {
-//         drawCircle(c.x, c.y, c.radius, c.color);
-//         if(c.debug){
-//             drawDebugCircle(c);
-//         }
+//     catch(e) {
+//         console.error(e);
 //     }
-
-//     let sprite = createSprite(x, y, dx, dy, color, draw, getCircleEdges);
-//     sprite.radius = radius;
-//     sprite.debug = debug;
-//     return sprite;
 // }
-
-
-// export async function createSpriteFromSvg(x, y, dx, dy, scale, svgDoc, debug = false) {
-//     const draw = (s) => {
-//         drawPathArray(s.x, s.y, s.paths, s.scale, debug);
-//     }
-//     let sprite = createSprite(x, y, dx, dy, null, draw, getRectEdges);
-//     sprite.paths = await pathArrayFromSvg(svgDoc);
-//     sprite.width = sprite.paths.nativeWidth * scale;
-//     sprite.height = sprite.paths.nativeHeight * scale;
-//     sprite.scale = scale;
-//     return sprite;
-// }
-
-// export async function createCircleSpriteFromSvg(x, y, dx, dy, radius, scale, svgDoc, debug = false){
-//     const draw = (s) => {
-//         _ctx.save();
-//         _ctx.beginPath();
-//         _ctx.arc(s.x, s.y, s.radius, 0, 2 * Math.PI);
-//         _ctx.clip();
-//         drawPathArray(s.x - radius, s.y - radius, s.paths, s.scale, false);
-//         _ctx.restore();
-//         if(s.debug){
-//            drawDebugCircle(s);
-//         }
-//     }
-//     let sprite = createSprite(x, y, dx, dy, null, draw, getCircleEdges);
-//     sprite.paths = await pathArrayFromSvg(svgDoc);
-//     sprite.scale = scale;
-//     sprite.radius = radius;
-//     sprite.debug = debug;
-//     return sprite;
-// }
-
-
-/** applies dx and dy to the x and y of each sprite, draws the sprite, and finds the new edges */
-// export function moveAndDrawSprites(){
-//     _sprites.forEach(s => {
-//         s.x += s.dx;
-//         s.y += s.dy;
-//         s.draw(s);
-//         const edges = s.findEdges(s);
-//         s.leftEdge = edges.leftEdge;
-//         s.rightEdge = edges.rightEdge;
-//         s.topEdge = edges.topEdge;
-//         s.bottomEdge = edges.bottomEdge
-//     });
-// }
-
-export function removeSprite(sprite){
-    _sprites.splice(_sprites.indexOf(sprite), 1);
-}
-
-export function rectOverlapsRect(r1, r2){
-    return rectOverlapsRectX(r1, r2) && rectOverlapsRectY(r1, r2);
-}
-
-export function rectOverlapsRectX(r1, r2){
-    return r1.rightEdge > r2.leftEdge && r2.rightEdge > r1.leftEdge;
-}
-
-export function rectOverlapsRectY(r1, r2){
-    return r1.bottomEdge > r2.topEdge && r1.topEdge < r2.bottomEdge;
-}
-
-export function circleOverlapsRect(c, r){
-    return circleRectangleTopEdgeAreColliding(c, r) ||
-    circleRectangleBottomEdgeAreColliding(c, r) ||
-    circleRectangleLeftEdgeAreColliding(c, r) ||
-    circleRectangleRightEdgeAreColliding(c, r);
-}
-
-// returns true if circle sprite is colliding with rectangle sprite's top edge
-export function circleRectangleTopEdgeAreColliding(c, r){
-    if (c.y <= r.topEdge && c.rightEdge >= r.leftEdge && c.leftEdge <= r.rightEdge){
-        return checkDistanceToPointLessThanRadius(c, c.x, r.topEdge);
-    }
-    return false;
-}
-
-export function circleRectangleBottomEdgeAreColliding(c, r){
-    if (c.y >= r.bottomEdge && c.rightEdge >= r.leftEdge && c.leftEdge <= r.rightEdge){
-        return checkDistanceToPointLessThanRadius(c, c.x, r.bottomEdge);
-    }
-    return false;
-}
-
-export function circleRectangleRightEdgeAreColliding(c, r){
-    if (c.x >= r.rightEdge && c.bottomEdge >= r.topEdge && c.topEdge <= r.bottomEdge){
-        return checkDistanceToPointLessThanRadius(c, r.rightEdge, c.y);
-    }
-    return false;
-}
-
-export function circleRectangleLeftEdgeAreColliding(c, r){
-    if (c.x <= r.leftEdge && c.bottomEdge >= r.topEdge && c.topEdge <= r.bottomEdge){
-        return checkDistanceToPointLessThanRadius(c, r.leftEdge, c.y);
-    }
-    return false;
-}
-
-// hat tip https://www.jeffreythompson.org/collision-detection/circle-rect.php
-export function checkDistanceToPointLessThanRadius(circle, testX, testY){
-    let distX = circle.x - testX;
-    let distY = circle.y - testY;
-    const distance = Math.sqrt( (distX*distX) + (distY*distY) );
-    return distance <= circle.radius;
-}
-
-export function drawShapesObj(sObj, originX = 0, originY = 0, scale = 1, debug = false){
-    try {
-        if(debug){
-            _ctx.strokeStyle = "limegreen";
-            _ctx.strokeRect(originX, originY, sObj.nativeWidth * scale, sObj.nativeHeight * scale);
-        }
-        sObj.shapes.forEach((s, i) => {
-            if(s.type){
-                const shapeX = originX + s.x * scale;
-                const shapeY = originY + s.y * scale;
-                switch(s.type) {
-                    case SHAPE_TYPE_RECT:
-                        drawRect(shapeX, shapeY, s.w * scale, s.h * scale, s.constantColor);
-                        break;
-                    case SHAPE_TYPE_CIRC:
-                        drawCircle(shapeX, shapeY, s.r * scale, s.constantColor);
-                        break;
-                    case SHAPE_TYPE_POINT: // designer only
-                        drawCircle(shapeX, shapeY, POINT_RADIUS, POINT_COLOR);
-                        break;
-                }
-            }
-            else {
-                throw new Error("no shape type for shape at index " + i);
-            }
-        });
-    }
-    catch(e) {
-        console.error(e);
-    }
-}
 
 export async function pathArrayFromSvg(svgDoc){
     const r = await fetch(svgDoc);

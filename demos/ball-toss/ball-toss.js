@@ -11,25 +11,16 @@ import {
     createEdgeSprite
 } from "../../js/pzsprites.js";
 
-import {
-    Box
-} from "../../js/planck.mjs";
-
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 500;
 
 window.onload = start;
 
-const ballSprites = [];
-const obstacleSprites = [];
-
 let box, ball, ledge;
-
 let draggingBall;
-
+let cursorForce = 2000; // the force the mouse cursor exerts on the dragging ball
 let mouseX = 0, mouseY = 0;
 let mouseDragging = false;
-
 
 async function start() {
     setupWorld("canvas", CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -61,7 +52,6 @@ async function start() {
 function drawFrame(timestamp){
     if(mouseDragging && draggingBall){
         const center = draggingBall.getPosition();
-        const cursorForce = 2000;
         draggingBall.applyForceToCenter({ x: (mouseX - center.x) * cursorForce, y: (mouseY - center.y) * cursorForce });
     }
     renderFrame();
@@ -72,7 +62,6 @@ function createNewBall(isDragging){
     let newBall = createCircleSprite(COLLIDER_DYNAMIC, mouseX, mouseY, 15);
     newBall.setBounciness(0.3);
     if(isDragging) draggingBall = newBall;
-    ballSprites.push(newBall);
 }
 
 function createRandomObstacles(count){
@@ -81,7 +70,7 @@ function createRandomObstacles(count){
         const height = getRandom(5, 50);
         const x = getRandom(0, CANVAS_WIDTH - width);
         const y = getRandom(0, CANVAS_HEIGHT - height);
-        obstacleSprites.push(createRectSprite(COLLIDER_STATIC, x, y, width, height));
+        createRectSprite(COLLIDER_STATIC, x, y, width, height);
     }
 }
 
