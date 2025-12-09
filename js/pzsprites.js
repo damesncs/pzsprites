@@ -12,6 +12,8 @@ let _ctx;
 
 let _world;
 
+let _bodiesToRemove = [];
+
 export const TIME_STEP = 1 / 60;
 
 /** planck.js docs - A static body does not move under simulation and behaves as if it has infinite mass. Internally, Planck.js stores zero for the mass and the inverse mass. Static bodies can be moved manually by the user. A static body always has zero velocity. Static bodies do not collide with other static or kinematic bodies. */
@@ -26,6 +28,11 @@ export const COLLIDER_DYNAMIC = "dynamic";
 const SHAPE_TYPE_POLYGON = "polygon";
 const SHAPE_TYPE_CIRCLE = "circle";
 const SHAPE_TYPE_EDGE = "edge";
+
+export const PLANCK = {
+    World: World,
+    Box: Box
+};
 
 function setupCanvas (cvs, width, height){
     _canvas = cvs;
@@ -73,6 +80,11 @@ export function renderFrame(){
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
         // TODO render joints - probably just a line
     }
+
+    _bodiesToRemove.forEach(b => {
+        _world.destroyBody(b);
+    });
+    _bodiesToRemove = [];
 }
 
 /** Creates a rectangular sprite
@@ -130,13 +142,24 @@ function createSprite(colliderType, initialX, initialY, shape){
         restitution: 0.1
     });
     body.setUserData({
-        fillColor: getRandomColorHexString(),
+        fillColor: getRandomColor(),
         strokeColor: "black",
-        debug: false
+        debug: false,
+        tags: []
     });
     body.setBounciness = (bounciness) => {
         body.getFixtureList().setRestitution(bounciness);
     };
+    body.addTag = (tag) => {
+        let ud = body.getUserData();
+        ud.tags.push(tag);
+        body.setUserData(ud);
+    };
+    body.removeTag = (tag) => {
+        let ud = body.getUserData();
+        ud.tags = ud.tags.filter(t => t != tag);
+        body.setUserData(ud);
+    }
     body.setFillColor = (color) => {
         let ud = body.getUserData();
         ud.fillColor = color;
@@ -153,6 +176,16 @@ function createSprite(colliderType, initialX, initialY, shape){
         body.setUserData(ud);
     }
     return body;
+}
+
+export function removeSprite(sprite){
+    _bodiesToRemove.push(sprite);
+}
+
+export function getSpritesByTag(tag){
+    return _world.getBodyList().filter(b => {
+        b.getUserData().tags.indexOf(tag) != -1;
+    });
 }
 
 function renderFixture(b, f){
@@ -203,7 +236,7 @@ export function drawLine(x1, y1, x2, y2, color){
     _ctx.stroke();
 }
 
-export function drawBorder (){
+export function drawBorder(){
     _ctx.strokeStyle = "black";
     _ctx.strokeRect(0, 0, _canvas.width, _canvas.height);
 }
@@ -277,20 +310,19 @@ export function clearCanvas(){
     _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
 }
 
-export function getRandomColorHexString(){
-    const r = getRandom8BitIntegerAsHexString();
-    const g = getRandom8BitIntegerAsHexString();
-    const b = getRandom8BitIntegerAsHexString();
+/** Generates a random color hex-code */
+export function getRandomColor(){
+    const r = getRandomHexByte();
+    const g = getRandomHexByte();
+    const b = getRandomHexByte();
     return `#${r}${g}${b}`;
 }
 
-export function getRandom8BitIntegerAsHexString(){
+export function getRandomHexByte(){
     return Math.trunc(Math.random() * 256).toString(16).padStart(2, 0);
 }
 
-// export function removeSprite(sprite){
-//     _sprites.splice(_sprites.indexOf(sprite), 1);
-// }
+
 
 
 // export function drawShapesObj(sObj, originX = 0, originY = 0, scale = 1, debug = false){

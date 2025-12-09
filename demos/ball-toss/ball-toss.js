@@ -6,17 +6,21 @@ import {
     createCircleSprite,
     createRectSprite,
     renderFrame,
-    getRandomColorHexString,
+    getRandomColor,
     setupWorld,
-    createEdgeSprite
+    createEdgeSprite,
+    PLANCK,
+    getSpritesByTag
 } from "../../js/pzsprites.js";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 500;
 
+const BALL_TAG = "ball";
+
 window.onload = start;
 
-let box, ball, ledge;
+let box, bigBall, ledge;
 let draggingBall;
 let cursorForce = 2000; // the force the mouse cursor exerts on the dragging ball
 let mouseX = 0, mouseY = 0;
@@ -28,12 +32,12 @@ async function start() {
     box = createRectSprite(COLLIDER_DYNAMIC, 100, 100, 40, 40);
     // box.setDebug(true);
 
-    ball = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
+    bigBall = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
     // ball.setDebug(true);
-    ball.setBounciness(0.5);
-    ball.setFillColor("#ffffff00");
-    ball.createFixture({
-        shape: new Box(ball.radius, 1)
+    bigBall.setBounciness(0.5);
+    bigBall.setFillColor("#ffffff00");
+    bigBall.createFixture({
+        shape: new PLANCK.Box(bigBall.radius, 1)
     });
 
     ledge = createRectSprite(COLLIDER_STATIC, 200, 400, 400, 10);
@@ -54,6 +58,7 @@ function drawFrame(timestamp){
         const center = draggingBall.getPosition();
         draggingBall.applyForceToCenter({ x: (mouseX - center.x) * cursorForce, y: (mouseY - center.y) * cursorForce });
     }
+
     renderFrame();
     window.requestAnimationFrame(drawFrame);
 }
@@ -61,6 +66,7 @@ function drawFrame(timestamp){
 function createNewBall(isDragging){
     let newBall = createCircleSprite(COLLIDER_DYNAMIC, mouseX, mouseY, 15);
     newBall.setBounciness(0.3);
+    newBall.addTag(BALL_TAG);
     if(isDragging) draggingBall = newBall;
 }
 
