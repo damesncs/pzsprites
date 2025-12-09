@@ -11,6 +11,10 @@ import {
     createEdgeSprite
 } from "../../js/pzsprites.js";
 
+import {
+    Box
+} from "../../js/planck.mjs";
+
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 500;
 
@@ -33,10 +37,13 @@ async function start() {
     box = createRectSprite(COLLIDER_DYNAMIC, 100, 100, 40, 40);
     // box.setDebug(true);
 
-    ball = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20, true);
+    ball = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
     // ball.setDebug(true);
     ball.setBounciness(0.5);
     ball.setFillColor("#ffffff00");
+    ball.createFixture({
+        shape: new Box(ball.radius, 1)
+    });
 
     ledge = createRectSprite(COLLIDER_STATIC, 200, 400, 400, 10);
     
@@ -53,11 +60,10 @@ async function start() {
 
 function drawFrame(timestamp){
     if(mouseDragging && draggingBall){
-        // draggingBall.setPosition({ x: mouseX, y: mouseY });
         const center = draggingBall.getPosition();
-        draggingBall.applyForceToCenter({ x: 20, y: 20 });
+        const cursorForce = 2000;
+        draggingBall.applyForceToCenter({ x: (mouseX - center.x) * cursorForce, y: (mouseY - center.y) * cursorForce });
     }
-
     renderFrame();
     window.requestAnimationFrame(drawFrame);
 }

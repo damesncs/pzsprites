@@ -82,21 +82,20 @@ export function renderFrame(){
 export function createRectSprite(colliderType, initialX, initialY, width, height){
     let shape = new Box(width / 2, height / 2);
     let sprite = createSprite(colliderType, initialX, initialY, shape);
+    sprite.width = width;
+    sprite.height = height;
     return sprite;
 }
 
-export function createCircleSprite(colliderType, initialX, initialY, radius, debug = false){    
+export function createCircleSprite(colliderType, initialX, initialY, radius){    
     let shape = new Circle({ x: 0, y: 0 }, radius);
     let sprite = createSprite(colliderType, initialX, initialY, shape);
-    if (debug) sprite.createFixture({
-        shape: new Box(radius, 1)
-    });
+    sprite.radius = radius;
     return sprite;
 }
 
 export function createEdgeSprite(colliderType, x1, y1, x2, y2){
     const shape = new Edge({ x: x1, y: y1 }, { x: x2, y: y2 });
-    // return createSprite(colliderType, x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2, shape);
     return createSprite(colliderType, 0, 0, shape);
 }
 
