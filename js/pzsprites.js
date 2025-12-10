@@ -28,10 +28,12 @@ export const COLLIDER_DYNAMIC = "dynamic";
 const SHAPE_TYPE_POLYGON = "polygon";
 const SHAPE_TYPE_CIRCLE = "circle";
 const SHAPE_TYPE_EDGE = "edge";
+const SHAPE_TYPE_CHAIN = "chain";
 
 export const PLANCK = {
     World: World,
     Box: Box
+    // TODO will need to export joint types
 };
 
 function setupCanvas (cvs, width, height){
@@ -240,6 +242,8 @@ function renderFixture(b, f){
         drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor);
     } else if(shapeType === SHAPE_TYPE_EDGE){
         drawLine(shape.m_vertex1.x, shape.m_vertex1.y, shape.m_vertex2.x, shape.m_vertex2.y, ud.strokeColor);
+    } else if(shapeType === SHAPE_TYPE_CHAIN){
+        // TODO 
     } else {
         console.error("unrecognized shape type");
     }

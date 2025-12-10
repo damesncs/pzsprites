@@ -1,4 +1,4 @@
-// planck integration tester
+// planck integration prototype
 
 import {
     COLLIDER_DYNAMIC,
@@ -42,6 +42,7 @@ async function start() {
     // ball.setDebug(true);
     bigBall.setBounciness(0.5);
     bigBall.setFillColor("#ffffff00");
+    // add an extra rectangle to this ball to see it rolling
     bigBall.createFixture({
         shape: new PLANCK.Box(bigBall.radius, 1)
     });
@@ -58,17 +59,20 @@ async function start() {
     
     addCollisionListenerForTag(BIG_BOX_TAG, onBigBoxCollision);
 
-    drawFrame(0);
+    drawEachFrame(0);
 }
 
-function drawFrame(timestamp){
+function drawEachFrame(timestamp){
+    applyMouseForceToDraggingBall();
+    renderFrame();
+    window.requestAnimationFrame(drawEachFrame);
+}
+
+function applyMouseForceToDraggingBall(){
     if(mouseDragging && draggingBall){
         const center = draggingBall.getPosition();
         draggingBall.applyForceToCenter({ x: (mouseX - center.x) * cursorForce, y: (mouseY - center.y) * cursorForce });
     }
-
-    renderFrame();
-    window.requestAnimationFrame(drawFrame);
 }
 
 function onBigBoxCollision(spriteA, spriteB, contact){
