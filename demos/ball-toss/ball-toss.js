@@ -94,8 +94,8 @@ function applyMouseForceToDraggingBall(){
     }
 }
 
-function onBigBoxCollision(spriteA, spriteB, contact){
-    if(spriteB.hasTag(BALL_TAG)) spriteB.setFillColor("red");
+function onBigBoxCollision(bigBox, other, contact){
+    if(other.hasTag(BALL_TAG)) other.setFillColor("red");
 }
 
 function createNewBall(isDragging){
