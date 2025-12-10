@@ -159,6 +159,10 @@ function createSprite(colliderType, initialX, initialY, shape){
         let ud = body.getUserData();
         ud.tags = ud.tags.filter(t => t != tag);
         body.setUserData(ud);
+    };
+    body.hasTag = (tag) => {
+        const ud = body.getUserData();
+        return ud.tags.indexOf(tag) != -1;
     }
     body.setFillColor = (color) => {
         let ud = body.getUserData();
@@ -186,6 +190,43 @@ export function getSpritesByTag(tag){
     return _world.getBodyList().filter(b => {
         b.getUserData().tags.indexOf(tag) != -1;
     });
+}
+
+/**
+ * @callback collisionListener 
+ * @param {object} spriteA 
+ * @param {object} spriteB
+ * @param {object} contact
+ */
+
+/**
+ * Adds a collision listener function which will be called when any collision occurs.
+ * @param {collisionListener} listenerFn
+ */
+export function addCollisionListener(listenerFn){
+    const callback = (contact) => {
+        const spriteA = contact.getFixtureA().getBody();
+        const spriteB = contact.getFixtureB().getBody();
+        listenerFn(spriteA, spriteB, contact);
+    }
+    _world.on("pre-solve", callback);
+}
+
+/**
+ * Adds a collision listener function which will be called when a collision occurs which
+ * involves a sprite with the given tag. 
+ * The sprite with the given tag will be passed as `spriteA` to the callback.
+ * @param {string} tag 
+ * @param {collisionListener} listenerFn 
+  */
+export function addCollisionListenerForTag(tag, listenerFn){
+    const callback = (contact) => {
+        const spriteA = contact.getFixtureA().getBody();
+        const spriteB = contact.getFixtureB().getBody();
+        if(spriteA.hasTag(tag)) listenerFn(spriteA, spriteB, contact);
+        else if(spriteB.hasTag(tag)) listenerFn(spriteB, spriteA, contact);
+    }
+    _world.on("pre-solve", callback);
 }
 
 function renderFixture(b, f){

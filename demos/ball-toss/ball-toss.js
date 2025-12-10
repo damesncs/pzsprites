@@ -10,13 +10,17 @@ import {
     setupWorld,
     createEdgeSprite,
     PLANCK,
-    getSpritesByTag
+    getSpritesByTag,
+    addCollisionListener,
+    addCollisionListenerForTag,
+    removeSprite
 } from "../../js/pzsprites.js";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 500;
 
 const BALL_TAG = "ball";
+const BIG_BOX_TAG = "bigbox";
 
 window.onload = start;
 
@@ -30,6 +34,8 @@ async function start() {
     setupWorld("canvas", CANVAS_WIDTH, CANVAS_HEIGHT);
     
     box = createRectSprite(COLLIDER_DYNAMIC, 100, 100, 40, 40);
+    box.setFillColor("red");
+    box.addTag(BIG_BOX_TAG);
     // box.setDebug(true);
 
     bigBall = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
@@ -49,6 +55,8 @@ async function start() {
     addEventListener("mousedown", onMouseDown);
     addEventListener("mouseup", onMouseUp);
     addEventListener("mousemove", onMouseMove);
+    
+    addCollisionListenerForTag(BIG_BOX_TAG, onBigBoxCollision);
 
     drawFrame(0);
 }
@@ -61,6 +69,10 @@ function drawFrame(timestamp){
 
     renderFrame();
     window.requestAnimationFrame(drawFrame);
+}
+
+function onBigBoxCollision(spriteA, spriteB, contact){
+    if(spriteB.hasTag(BALL_TAG)) spriteB.setFillColor("red");
 }
 
 function createNewBall(isDragging){
