@@ -4,7 +4,9 @@ import {
     World, 
     Box, 
     Circle,
-    Edge
+    Edge,
+    Chain,
+    Vec2
 } from "../../js/planck.mjs";
 
 let _canvas;
@@ -133,6 +135,18 @@ export function createEdgeSprite(colliderType, x1, y1, x2, y2){
     return createSprite(colliderType, 0, 0, shape);
 }
 
+
+/**
+ * Creates a new Chain sprite
+ * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
+ * @param {Vec2[]} vertices 
+ * @returns {object} the new sprite (planck.js Body)
+ */
+export function createChainSprite(colliderType, vertices){
+    const shape = new Chain(vertices);
+    return createSprite(colliderType, 0, 0, shape);
+}
+
 function createSprite(colliderType, initialX, initialY, shape){
     const body = _world.createBody({
         position: { x: initialX, y: initialY },
@@ -152,35 +166,19 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.setBounciness = (bounciness) => {
         body.getFixtureList().setRestitution(bounciness);
     };
-    body.addTag = (tag) => {
+    body.setUserDataProp = (p, v) => {
         let ud = body.getUserData();
-        ud.tags.push(tag);
+        ud[p] = v;
         body.setUserData(ud);
     };
-    body.removeTag = (tag) => {
-        let ud = body.getUserData();
-        ud.tags = ud.tags.filter(t => t != tag);
-        body.setUserData(ud);
-    };
-    body.hasTag = (tag) => {
-        const ud = body.getUserData();
-        return ud.tags.indexOf(tag) != -1;
-    }
-    body.setFillColor = (color) => {
-        let ud = body.getUserData();
-        ud.fillColor = color;
-        body.setUserData(ud);
-    };
-    body.setStrokeColor = (color) => {
-        let ud = body.getUserData();
-        ud.strokeColor = color;
-        body.setUserData(ud);
-    };
-    body.setDebug = (debug) => {
-        let ud = body.getUserData();
-        ud.debug = debug;
-        body.setUserData(ud);
-    }
+    body.setTags = (tagArray) => body.setUserDataProp("tags", tagArray);
+    body.getTags = () => body.getUserData().tags;
+    body.addTag = (tag) => body.getTags().push(tag);
+    body.removeTag = (tag) => body.setTags(body.getTags().filter(t => t != tag));
+    body.hasTag = (tag) => body.getTags().indexOf(tag) != -1;
+    body.setFillColor = (color) => body.setUserDataProp("fillColor", color);
+    body.setStrokeColor = (color) => body.setUserDataProp("strokeColor", color);
+    body.setDebug = (debug) => body.setUserDataProp("debug", debug);
     return body;
 }
 
@@ -197,8 +195,8 @@ export function getSpritesByTag(tag){
 /**
  * @callback collisionListener 
  * @param {object} spriteA 
- * @param {object} spriteB
- * @param {object} contact
+ * @param {object} spriteB 
+ * @param {object} contact the planck.js Contact object
  */
 
 /**
@@ -241,9 +239,9 @@ function renderFixture(b, f){
     } else if(shapeType === SHAPE_TYPE_CIRCLE){
         drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor);
     } else if(shapeType === SHAPE_TYPE_EDGE){
-        drawLine(shape.m_vertex1.x, shape.m_vertex1.y, shape.m_vertex2.x, shape.m_vertex2.y, ud.strokeColor);
+        drawEdge(shape, ud.strokeColor);
     } else if(shapeType === SHAPE_TYPE_CHAIN){
-        // TODO 
+        drawChain(shape, ud.strokeColor);
     } else {
         console.error("unrecognized shape type");
     }
@@ -257,6 +255,18 @@ function getPolygonAbsoluteVertices(body, shape){
     return shape.m_vertices.map(v => {
         return body.getWorldPoint(v);
     });
+}
+
+function drawChain(chain, strokeColor){
+    for(let i = 0; i < chain.getChildCount(); i++){
+        const edge = new Edge();
+        chain.getChildEdge(edge, i);
+        drawEdge(edge, );
+    }
+}
+
+function drawEdge(edge, strokeColor){
+    drawLine(edge.m_vertex1.x, edge.m_vertex1.y, edge.m_vertex2.x, edge.m_vertex2.y, strokeColor);
 }
 
 function drawPolygon(points, fillColor, strokeColor) {
@@ -367,7 +377,10 @@ export function getRandomHexByte(){
     return Math.trunc(Math.random() * 256).toString(16).padStart(2, 0);
 }
 
-
+// h/t MDN
+export function getRandom(min, max) {
+    return Math.random() * (max - min) + min;
+}
 
 
 // export function drawShapesObj(sObj, originX = 0, originY = 0, scale = 1, debug = false){

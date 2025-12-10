@@ -7,13 +7,15 @@ import {
     createRectSprite,
     renderFrame,
     getRandomColor,
+    getRandom,
     setupWorld,
     createEdgeSprite,
     PLANCK,
     getSpritesByTag,
     addCollisionListener,
     addCollisionListenerForTag,
-    removeSprite
+    removeSprite,
+    createChainSprite
 } from "../../js/pzsprites.js";
 
 const CANVAS_WIDTH = 800;
@@ -41,7 +43,7 @@ async function start() {
     bigBall = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
     // ball.setDebug(true);
     bigBall.setBounciness(0.5);
-    bigBall.setFillColor("#ffffff00");
+    bigBall.setFillColor("#ffffff00"); // transparent
     // add an extra rectangle to this ball to see it rolling
     bigBall.createFixture({
         shape: new PLANCK.Box(bigBall.radius, 1)
@@ -49,7 +51,24 @@ async function start() {
 
     ledge = createRectSprite(COLLIDER_STATIC, 200, 400, 400, 10);
     
-    createEdgeSprite(COLLIDER_STATIC, 0, CANVAS_HEIGHT - 50, CANVAS_WIDTH, CANVAS_HEIGHT - 50);
+    // createEdgeSprite(COLLIDER_STATIC, 0, CANVAS_HEIGHT - 50, CANVAS_WIDTH, CANVAS_HEIGHT - 50);
+
+    const chainVerts = [
+        { x: 150, y: 200},
+        { x: 230, y: 250},
+        { x: 290, y: 300},
+        { x: 350, y: 350},
+        { x: 390, y: 390}
+    ];
+    createChainSprite(COLLIDER_STATIC, chainVerts);
+
+    // create a chain which surrounds the canvas (hard walls)
+    createChainSprite(COLLIDER_STATIC, [
+        { x: 0, y: 0 },
+        { x: CANVAS_WIDTH, y: 0 },
+        { x: CANVAS_WIDTH, y: CANVAS_HEIGHT },
+        { x: 0, y: CANVAS_HEIGHT }
+    ]);
 
     createRandomObstacles(8);
 
@@ -94,10 +113,6 @@ function createRandomObstacles(count){
         const y = getRandom(0, CANVAS_HEIGHT - height);
         createRectSprite(COLLIDER_STATIC, x, y, width, height);
     }
-}
-
-function getRandom(min, max) {
-    return Math.random() * (max - min) + min;
 }
 
 function onMouseMove(e){
