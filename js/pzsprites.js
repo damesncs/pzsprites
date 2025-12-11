@@ -35,7 +35,7 @@ const SHAPE_TYPE_CHAIN = "chain";
 export const PLANCK = {
     World: World,
     Box: Box
-    // TODO will need to export joint types
+    // TODO will need to export joint types probably
 };
 
 function setupCanvas (cvs, width, height){
@@ -58,10 +58,10 @@ export function setupWorld(canvasId, width, height, worldDef){
     _world = new World(wd);
 
     _world.on('remove-joint', function(joint) {
-        // remove all references to joint.  
+        // TODO remove all references to joint.  
     });
     _world.on('remove-fixture', function(fixture) {
-        // remove all references to fixture.
+        // TODO remove all references to fixture.
     });
     _world.on('remove-body', function(body) {
         // bodies are not removed implicitly,
@@ -135,7 +135,6 @@ export function createEdgeSprite(colliderType, x1, y1, x2, y2){
     return createSprite(colliderType, 0, 0, shape);
 }
 
-
 /**
  * Creates a new Chain sprite
  * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
@@ -163,9 +162,8 @@ function createSprite(colliderType, initialX, initialY, shape){
         debug: false,
         tags: []
     });
-    body.setBounciness = (bounciness) => {
-        body.getFixtureList().setRestitution(bounciness);
-    };
+    body.setBounciness = (bounciness) => body.getFixtureList().setRestitution(bounciness);
+    body.setDensity = (density) => body.getFixtureList().setDensity(density);
     body.setUserDataProp = (p, v) => {
         let ud = body.getUserData();
         ud[p] = v;
@@ -174,11 +172,17 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.setTags = (tagArray) => body.setUserDataProp("tags", tagArray);
     body.getTags = () => body.getUserData().tags;
     body.addTag = (tag) => body.getTags().push(tag);
-    body.removeTag = (tag) => body.setTags(body.getTags().filter(t => t != tag));
+    body.removeTag = (tag) => body.setTags(body.getTags().filter(t => t !== tag));
     body.hasTag = (tag) => body.getTags().indexOf(tag) != -1;
+    body.getFillColor = () => body.getUserData().fillColor;
     body.setFillColor = (color) => body.setUserDataProp("fillColor", color);
+    body.getStrokeColor = () => body.getUserData().strokeColor;
     body.setStrokeColor = (color) => body.setUserDataProp("strokeColor", color);
     body.setDebug = (debug) => body.setUserDataProp("debug", debug);
+    body.addCollisionListener = (fn, tag) => {
+        if(tag) addCollisionListenerForSpriteWithTag(body, tag, fn);
+        else addCollisionListenerForSprite(body, fn);
+    }
     return body;
 }
 
@@ -188,7 +192,7 @@ export function removeSprite(sprite){
 
 export function getSpritesByTag(tag){
     return _world.getBodyList().filter(b => {
-        b.getUserData().tags.indexOf(tag) != -1;
+        b.getUserData().tags.indexOf(tag) !== -1;
     });
 }
 
@@ -225,9 +229,47 @@ export function addCollisionListenerForTag(tag, listenerFn){
         const spriteB = contact.getFixtureB().getBody();
         if(spriteA.hasTag(tag)) listenerFn(spriteA, spriteB, contact);
         else if(spriteB.hasTag(tag)) listenerFn(spriteB, spriteA, contact);
-    }
+    };
     _world.on("pre-solve", callback);
 }
+
+/**
+ * Add a collision listener function which will be called when a collision occurs
+ * which involves the given sprite.
+ * The given sprite will be passed to the listener as the first parameter (spriteA).
+ * @param {object} sprite 
+ * @param {collisionListener} listenerFn 
+ */
+export function addCollisionListenerForSprite(sprite, listenerFn){
+    const callback = (contact) => {
+        const spriteA = contact.getFixtureA().getBody();
+        const spriteB = contact.getFixtureB().getBody();
+        if(spriteA === sprite) listenerFn(spriteA, spriteB, contact);
+        else if(spriteB === sprite) listenerFn(spriteB, spriteA, contact);
+    };
+    _world.on("pre-solve", callback);
+}
+
+/**
+ * Add a collision listener function which will be called when a collision occurs
+ * which involves the given sprite with a sprite with the given tag.
+ * The given sprite will be passed to the listener as the first parameter (spriteA).
+ * @param {object} sprite 
+ * @param {string} tag 
+ * @param {collisionListener} listenerFn 
+ */
+export function addCollisionListenerForSpriteWithTag(sprite, tag, listenerFn){
+    const callback = (contact) => {
+        const spriteA = contact.getFixtureA().getBody();
+        const spriteB = contact.getFixtureB().getBody();
+        if(spriteA === sprite && spriteB.hasTag(tag)) listenerFn(spriteA, spriteB, contact);
+        else if(spriteB === sprite && spriteA.hasTag(tag)) listenerFn(spriteB, spriteA, contact);
+    };
+    _world.on("pre-solve", callback);
+}
+
+// TODO remove collision listener
+
 
 function renderFixture(b, f){
     const shapeType = f.getType();
