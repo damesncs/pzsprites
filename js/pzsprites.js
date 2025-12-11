@@ -1,5 +1,11 @@
 // v0.1 - physics provided by planck.js
 
+// TODO - 
+// - svg sprites
+// - support for joints
+// - collision listener for two specific sprites
+// - test removing sprites
+
 import { 
     World, 
     Box, 
@@ -138,11 +144,12 @@ export function createEdgeSprite(colliderType, x1, y1, x2, y2){
 /**
  * Creates a new Chain sprite
  * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
- * @param {Vec2[]} vertices 
+ * @param {Vec2[]} vertices a list of points (vertices)
+ * @param {boolean} [loop=false] connect the last and first points
  * @returns {object} the new sprite (planck.js Body)
  */
-export function createChainSprite(colliderType, vertices){
-    const shape = new Chain(vertices);
+export function createChainSprite(colliderType, vertices, loop = false){
+    const shape = new Chain(vertices, loop);
     return createSprite(colliderType, 0, 0, shape);
 }
 
@@ -163,7 +170,10 @@ function createSprite(colliderType, initialX, initialY, shape){
         tags: []
     });
     body.setBounciness = (bounciness) => body.getFixtureList().setRestitution(bounciness);
-    body.setDensity = (density) => body.getFixtureList().setDensity(density);
+    body.setDensity = (density) => {
+        body.getFixtureList().setDensity(density);
+        body.resetMassData();
+    }
     body.setUserDataProp = (p, v) => {
         let ud = body.getUserData();
         ud[p] = v;
@@ -182,7 +192,17 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.addCollisionListener = (fn, tag) => {
         if(tag) addCollisionListenerForSpriteWithTag(body, tag, fn);
         else addCollisionListenerForSprite(body, fn);
-    }
+    };
+    body.containsPoint = (x, y) => {
+        let contains = false;
+        for(let f = body.getFixtureList(); f; f = f.getNext()){
+            if(f.testPoint({ x: x, y: y })){
+                contains = true;
+                break;
+            }
+        };
+        return contains;
+    };
     return body;
 }
 
@@ -190,10 +210,19 @@ export function removeSprite(sprite){
     _bodiesToRemove.push(sprite);
 }
 
+/**
+ * Find sprites with the given tag.
+ * @param {string} tag 
+ * @returns {object[]} an array of sprites with the given tag
+ */
 export function getSpritesByTag(tag){
-    return _world.getBodyList().filter(b => {
-        b.getUserData().tags.indexOf(tag) !== -1;
-    });
+    let spritesWithTag = [];
+    for(let b = _world.getBodyList(); b; b = b.getNext()){
+        if(b.getUserData().tags.includes(tag)){
+            spritesWithTag.push(b);
+        }
+    }
+    return spritesWithTag;
 }
 
 /**
@@ -257,6 +286,7 @@ export function addCollisionListenerForSprite(sprite, listenerFn){
  * @param {object} sprite 
  * @param {string} tag 
  * @param {collisionListener} listenerFn 
+ * @returns {function} A reference to the listener which can be used to remove it later.
  */
 export function addCollisionListenerForSpriteWithTag(sprite, tag, listenerFn){
     const callback = (contact) => {
@@ -266,9 +296,16 @@ export function addCollisionListenerForSpriteWithTag(sprite, tag, listenerFn){
         else if(spriteB === sprite && spriteA.hasTag(tag)) listenerFn(spriteB, spriteA, contact);
     };
     _world.on("pre-solve", callback);
+    return callback;
 }
 
-// TODO remove collision listener
+/**
+ * Removes the given collision listener
+ * @param {function} callback the reference to the listener which was returned by `addCollisionListener...`
+ */
+export function removeCollisionListener(callback){
+    _world.off("pre-solve", callback);
+}
 
 
 function renderFixture(b, f){

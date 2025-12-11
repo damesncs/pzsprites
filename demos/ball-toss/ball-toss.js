@@ -29,7 +29,7 @@ window.onload = start;
 
 let box, bigBall, ledge;
 let draggingBall;
-let cursorForce = 2000; // the force the mouse cursor exerts on the dragging ball
+let cursorForce = 4000; // the force the mouse cursor exerts on the dragging ball
 let mouseX = 0, mouseY = 0;
 let mouseDragging = false;
 
@@ -63,12 +63,13 @@ async function start() {
     createChainSprite(COLLIDER_STATIC, rampVertices);
 
     // create a chain which surrounds the canvas (hard walls)
-    createChainSprite(COLLIDER_STATIC, [
+    const walls = [
         { x: 0, y: 0 },
         { x: CANVAS_WIDTH, y: 0 },
         { x: CANVAS_WIDTH, y: CANVAS_HEIGHT },
         { x: 0, y: CANVAS_HEIGHT }
-    ]);
+    ];
+    createChainSprite(COLLIDER_STATIC, walls, true);
 
     createRandomObstacles(8);
     addCollisionListenerForTag(OBSTACLE_TAG, onObstacleCollision);
@@ -105,12 +106,7 @@ function onLedgeBallCollision(ledge, ball, contact){
     ball.setFillColor(ledge.getFillColor());
 }
 
-function createNewBall(isDragging){
-    let newBall = createCircleSprite(COLLIDER_DYNAMIC, mouseX, mouseY, 15);
-    newBall.setBounciness(0.3);
-    newBall.addTag(BALL_TAG);
-    if(isDragging) draggingBall = newBall;
-}
+
 
 function createRandomObstacles(count){
     for(let i = 0; i < count; i++){
@@ -132,12 +128,34 @@ function onMouseMove(e){
 
 function onMouseUp(e){
     mouseDragging = false;
+    draggingBall.setStrokeColor("black");
 }
 
 function onMouseDown(e){
     mouseX = e.offsetX;
     mouseY = e.offsetY;
-    mouseDragging = true;
-    createNewBall(mouseDragging);
+
+    if(ledge.containsPoint(mouseX, mouseY)){
+        ledge.setFillColor(getRandomColor());
+    } else {
+        const balls = getSpritesByTag(BALL_TAG);
+        const touching = balls.filter(b => b.containsPoint(mouseX, mouseY));
+        if(touching.length > 0) {
+            mouseDragging = true;
+            draggingBall = touching[0];
+            draggingBall.setStrokeColor("limegreen");
+        } else {
+            mouseDragging = true;
+            createNewBall(mouseDragging);
+        }  
+    }   
 }
 
+function createNewBall(isDragging){
+    let newBall = createCircleSprite(COLLIDER_DYNAMIC, mouseX, mouseY, 15);
+    newBall.setStrokeColor("limegreen");
+    newBall.setBounciness(0.3);
+    newBall.setDensity(3);
+    newBall.addTag(BALL_TAG);
+    if(isDragging) draggingBall = newBall;
+}
