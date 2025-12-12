@@ -13,6 +13,7 @@ import {
     Edge,
     Chain,
     Vec2,
+    JointDef,
     DistanceJoint,
     WeldJoint
 } from "../../js/planck.mjs";
@@ -41,10 +42,13 @@ const SHAPE_TYPE_EDGE = "edge";
 const SHAPE_TYPE_CHAIN = "chain";
 
 export const PLANCK = {
-    World: World,
+    // World: World,
     Box: Box,
+    Body: Body,
+    Fixture: Fixture,
     DistanceJoint: DistanceJoint,
     WeldJoint: WeldJoint
+
     // TODO will need to export joint types probably
 };
 
@@ -109,7 +113,7 @@ export function renderFrame(){
  * @param {number} initialY the sprite's beginning y position
  * @param {number} height the sprite's beginning height
  * @param {number} width the sprite's beginning width
- * @returns a reference to the new sprite (the planck.js Body)
+ * @returns {Sprite} a reference to the new sprite (the planck.js Body)
  */
 export function createRectSprite(colliderType, initialX, initialY, width, height){
     let shape = new Box(width / 2, height / 2);
@@ -124,7 +128,7 @@ export function createRectSprite(colliderType, initialX, initialY, width, height
  * @param {number} initialX the sprite's beginning x position
  * @param {number} initialY the sprite's beginning y position
  * @param {number} radius the circle sprite's radius
- * @returns a reference to the new sprite (the planck.js Body)
+ * @returns {Sprite} a reference to the new sprite (the planck.js Body)
  */
 export function createCircleSprite(colliderType, initialX, initialY, radius){    
     let shape = new Circle({ x: 0, y: 0 }, radius);
@@ -140,7 +144,7 @@ export function createCircleSprite(colliderType, initialX, initialY, radius){
  * @param {number} y1 
  * @param {number} x2 
  * @param {number} y2 
- * @returns a reference to the new sprite (the planck.js Body)
+ * @returns {Sprite} a reference to the new sprite (the planck.js Body)
  */
 export function createEdgeSprite(colliderType, x1, y1, x2, y2){
     const shape = new Edge({ x: x1, y: y1 }, { x: x2, y: y2 });
@@ -152,13 +156,29 @@ export function createEdgeSprite(colliderType, x1, y1, x2, y2){
  * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
  * @param {Vec2[]} vertices a list of points (vertices)
  * @param {boolean} [loop=false] connect the last and first points
- * @returns {object} the new sprite (planck.js Body)
+ * @returns {Sprite} the new sprite (planck.js Body)
  */
 export function createChainSprite(colliderType, vertices, loop = false){
     const shape = new Chain(vertices, loop);
     return createSprite(colliderType, 0, 0, shape);
 }
 
+/**
+ * @typedef {Object} Sprite
+ * @property {function} getTags
+ * @property {function} setTags set the tags
+ * @method setBounciness 
+ *  @param {number} bounciness
+ */
+
+/**
+ * Create a new sprite
+ * @param {string} colliderType 
+ * @param {number} initialX 
+ * @param {number} initialY 
+ * @param {object} shape 
+ * @returns {Sprite} the new sprite
+ */
 function createSprite(colliderType, initialX, initialY, shape){
     const body = _world.createBody({
         position: { x: initialX, y: initialY },
@@ -209,11 +229,11 @@ function createSprite(colliderType, initialX, initialY, shape){
         };
         return contains;
     };
-    body.createJoint = (jointDef, other) => {
-        jointDef.bodyA = body;
-        jointDef.bodyB = other;
-        return _world.createJoint(jointDef)
-    };
+    // body.createJoint = (jointDef, other) => {
+    //     jointDef.bodyA = body;
+    //     jointDef.bodyB = other;
+    //     return _world.createJoint(jointDef)
+    // };
     return body;
 }
 
@@ -227,9 +247,9 @@ export function removeSprite(sprite){
 
 /**
  * Creates a new joint
- * @param {object} jointDef 
- * @param {object} spriteA 
- * @param {object} spriteB 
+ * @param {JointDef} jointDef 
+ * @param {Body} spriteA 
+ * @param {Body} spriteB 
  * @returns a reference to the new joint
  */
 export function createJoint(jointDef, spriteA = null, spriteB = null){

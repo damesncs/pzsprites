@@ -50,8 +50,13 @@ async function start() {
         shape: new PLANCK.Box(bigBall.radius, 1)
     });
 
+    
+
     ledge = createRectSprite(COLLIDER_STATIC, 400, 400, 400, 10);
     ledge.addCollisionListener(onLedgeBallCollision, BALL_TAG);
+
+    ledge.
+
 
     hangingBall = createCircleSprite(COLLIDER_DYNAMIC, 400, 450, 15);
     createJoint(new PLANCK.DistanceJoint({ 
