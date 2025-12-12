@@ -12,7 +12,9 @@ import {
     Circle,
     Edge,
     Chain,
-    Vec2
+    Vec2,
+    DistanceJoint,
+    WeldJoint
 } from "../../js/planck.mjs";
 
 let _canvas;
@@ -40,7 +42,9 @@ const SHAPE_TYPE_CHAIN = "chain";
 
 export const PLANCK = {
     World: World,
-    Box: Box
+    Box: Box,
+    DistanceJoint: DistanceJoint,
+    WeldJoint: WeldJoint
     // TODO will need to export joint types probably
 };
 
@@ -88,7 +92,9 @@ export function renderFrame(){
     }
 
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
-        // TODO render joints - probably just a line
+        const a = joint.getAnchorA();
+        const b = joint.getAnchorB();
+        drawLine(a.x, a.y, b.x, b.y, "black");
     }
 
     _bodiesToRemove.forEach(b => {
@@ -203,12 +209,38 @@ function createSprite(colliderType, initialX, initialY, shape){
         };
         return contains;
     };
+    body.createJoint = (jointDef, other) => {
+        jointDef.bodyA = body;
+        jointDef.bodyB = other;
+        return _world.createJoint(jointDef)
+    };
     return body;
 }
 
+/**
+ * Removes the given sprite from the canvas and from the physics simulation
+ * @param {object} sprite 
+ */
 export function removeSprite(sprite){
     _bodiesToRemove.push(sprite);
 }
+
+/**
+ * Creates a new joint
+ * @param {object} jointDef 
+ * @param {object} spriteA 
+ * @param {object} spriteB 
+ * @returns a reference to the new joint
+ */
+export function createJoint(jointDef, spriteA = null, spriteB = null){
+    if(spriteA instanceof Object
+        && spriteB instanceof Object 
+        && jointDef instanceof Object){
+            jointDef.bodyA = spriteA;
+            jointDef.bodyB = spriteB;
+        }
+    return _world.createJoint(jointDef);
+};
 
 /**
  * Find sprites with the given tag.
@@ -340,7 +372,7 @@ function drawChain(chain, strokeColor){
     for(let i = 0; i < chain.getChildCount(); i++){
         const edge = new Edge();
         chain.getChildEdge(edge, i);
-        drawEdge(edge, );
+        drawEdge(edge, strokeColor);
     }
 }
 

@@ -16,6 +16,7 @@ import {
     addCollisionListenerForTag,
     removeSprite,
     createChainSprite,
+    createJoint,
     addCollisionListenerForSprite
 } from "../../js/pzsprites.js";
 
@@ -29,6 +30,7 @@ window.onload = start;
 
 let box, bigBall, ledge;
 let draggingBall;
+let hangingBall;
 let cursorForce = 4000; // the force the mouse cursor exerts on the dragging ball
 let mouseX = 0, mouseY = 0;
 let mouseDragging = false;
@@ -50,8 +52,11 @@ async function start() {
 
     ledge = createRectSprite(COLLIDER_STATIC, 400, 400, 400, 10);
     ledge.addCollisionListener(onLedgeBallCollision, BALL_TAG);
-    
-    // createEdgeSprite(COLLIDER_STATIC, 0, CANVAS_HEIGHT - 50, CANVAS_WIDTH, CANVAS_HEIGHT - 50);
+
+    hangingBall = createCircleSprite(COLLIDER_DYNAMIC, 400, 450, 15);
+    createJoint(new PLANCK.DistanceJoint({ 
+        collideConnected: true
+     }, hangingBall, ledge, hangingBall.getPosition(), ledge.getPosition()));
 
     const rampVertices = [
         { x: 150, y: 200},
@@ -105,8 +110,6 @@ function onObstacleCollision(obstacle, other, contact){
 function onLedgeBallCollision(ledge, ball, contact){
     ball.setFillColor(ledge.getFillColor());
 }
-
-
 
 function createRandomObstacles(count){
     for(let i = 0; i < count; i++){
