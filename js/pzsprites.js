@@ -38,16 +38,54 @@ export const COLLIDER_KINEMATIC = "kinematic";
 /** planck.js docs - A dynamic body is fully simulated. They can be moved manually by the user, but normally they move according to forces. A dynamic body can collide with all body types. A dynamic body always has finite, non-zero mass. If you try to set the mass of a dynamic body to zero, it will automatically acquire a mass of one kilogram and it won't rotate. */
 export const COLLIDER_DYNAMIC = "dynamic";
 
+/**
+ * a rigid rod between the two sprites
+ */
 export const JOINT_DISTANCE = "DistanceJoint";
+/**
+ * for top-down friction
+ */
 export const JOINT_FRICTION = "FrictionJoint";
+
+/**
+ * planck.js docs: A gear joint is used to connect two joints together. Either joint can be a revolute or prismatic joint
+ */
 export const JOINT_GEAR = "GearJoint";
+
+/**
+ * planck.js docs: A motor joint is used to control the relative motion between two bodies. 
+ */
 export const JOINT_MOTOR = "MotorJoint";
+/**
+ * planck.js docs: A mouse joint is used to make a point on a body track a specified world point. 
+ */
 export const JOINT_MOUSE = "MouseJoint";
+/**
+ * planck.js docs: This joint provides one degree of freedom: translation along an axis fixed in bodyA. Relative rotation is prevented. You can use a joint limit to restrict the range of motion and a joint motor to drive the motion or to model joint friction.
+ */
 export const JOINT_PRISMATIC = "PrismaticJoint";
+
+/**
+ * planck.js docs: The pulley joint is connected to two bodies and two fixed ground points.
+ */
 export const JOINT_PULLEY = "PulleyJoint";
+
+/**
+ * planck.js docs: A revolute joint constrains two bodies to share a common point while they are free to rotate about the point. The relative rotation about the shared point is the joint angle. You can limit the relative rotation with a joint limit that specifies a lower and upper angle. You can use a motor to drive the relative rotation about the shared point. A maximum motor torque is provided so that infinite forces are not generated.
+ */
 export const JOINT_REVOLUTE = "RevoluteJoint";
+
+/**
+ * planck.js docs: A rope joint enforces a maximum distance between two points on two bodies. It has no other effect.
+ */
 export const JOINT_ROPE = "RopeJoint";
+/**
+ * "glues" the two sprites together at the anchor point
+ */
 export const JOINT_WELD = "WeldJoint";
+/**
+ * planck.js docs: This joint provides two degrees of freedom: translation along an axis fixed in bodyA and rotation in the plane. In other words, it is a point to line constraint with a rotational motor and a linear spring/damper. 
+ */
 export const JOINT_WHEEL = "WheelJoint";
 
 const SHAPE_TYPE_POLYGON = "polygon";
@@ -266,9 +304,19 @@ export function removeSprite(sprite){
 export function createJoint(jointType, spriteA, spriteB, jointDef = {}){
     switch(jointType){
         case JOINT_DISTANCE: 
-            jointDef = new DistanceJoint(jointDef, spriteA, spriteB, spriteA.getPosition(), spriteB.getPosition());
+            jointDef = new DistanceJoint(jointDef, spriteA, spriteB);
+            break;
+        case JOINT_REVOLUTE:
+            jointDef = new RevoluteJoint(jointDef, spriteA, spriteB);
+            break;
+        case JOINT_WELD:
+            jointDef = new WeldJoint(jointDef, spriteA, spriteB);
+            break;
+        case JOINT_WHEEL:
+            jointDef = new WheelJoint(jointDef, spriteA, spriteB);
+            break;
         default:
-            console.error("invalid joint type");
+            console.error("invalid or unimplemented joint type: " + jointType);
     }
         
 
@@ -525,39 +573,6 @@ export function getRandomHexByte(){
 export function getRandom(min, max) {
     return Math.random() * (max - min) + min;
 }
-
-
-// export function drawShapesObj(sObj, originX = 0, originY = 0, scale = 1, debug = false){
-//     try {
-//         if(debug){
-//             _ctx.strokeStyle = "limegreen";
-//             _ctx.strokeRect(originX, originY, sObj.nativeWidth * scale, sObj.nativeHeight * scale);
-//         }
-//         sObj.shapes.forEach((s, i) => {
-//             if(s.type){
-//                 const shapeX = originX + s.x * scale;
-//                 const shapeY = originY + s.y * scale;
-//                 switch(s.type) {
-//                     case SHAPE_TYPE_RECT:
-//                         drawRect(shapeX, shapeY, s.w * scale, s.h * scale, s.constantColor);
-//                         break;
-//                     case SHAPE_TYPE_CIRC:
-//                         drawCircle(shapeX, shapeY, s.r * scale, s.constantColor);
-//                         break;
-//                     case SHAPE_TYPE_POINT: // designer only
-//                         drawCircle(shapeX, shapeY, POINT_RADIUS, POINT_COLOR);
-//                         break;
-//                 }
-//             }
-//             else {
-//                 throw new Error("no shape type for shape at index " + i);
-//             }
-//         });
-//     }
-//     catch(e) {
-//         console.error(e);
-//     }
-// }
 
 export async function pathArrayFromSvg(svgDoc){
     const r = await fetch(svgDoc);
