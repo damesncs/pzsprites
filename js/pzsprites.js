@@ -7,16 +7,18 @@
 // - test removing sprites
 
 import { 
-    World, 
+    World,
+    Body,
+    Fixture,
     Box, 
     Circle,
     Edge,
     Chain,
     Vec2,
-    JointDef,
     DistanceJoint,
     WeldJoint
 } from "../../js/planck.mjs";
+import { FrictionJoint, GearJoint, MotorJoint, PrismaticJoint, PulleyJoint, RevoluteJoint, RopeJoint, WheelJoint } from "./planck.mjs";
 
 let _canvas;
 let _ctx;
@@ -36,6 +38,18 @@ export const COLLIDER_KINEMATIC = "kinematic";
 /** planck.js docs - A dynamic body is fully simulated. They can be moved manually by the user, but normally they move according to forces. A dynamic body can collide with all body types. A dynamic body always has finite, non-zero mass. If you try to set the mass of a dynamic body to zero, it will automatically acquire a mass of one kilogram and it won't rotate. */
 export const COLLIDER_DYNAMIC = "dynamic";
 
+export const JOINT_DISTANCE = "DistanceJoint";
+export const JOINT_FRICTION = "FrictionJoint";
+export const JOINT_GEAR = "GearJoint";
+export const JOINT_MOTOR = "MotorJoint";
+export const JOINT_MOUSE = "MouseJoint";
+export const JOINT_PRISMATIC = "PrismaticJoint";
+export const JOINT_PULLEY = "PulleyJoint";
+export const JOINT_REVOLUTE = "RevoluteJoint";
+export const JOINT_ROPE = "RopeJoint";
+export const JOINT_WELD = "WeldJoint";
+export const JOINT_WHEEL = "WheelJoint";
+
 const SHAPE_TYPE_POLYGON = "polygon";
 const SHAPE_TYPE_CIRCLE = "circle";
 const SHAPE_TYPE_EDGE = "edge";
@@ -45,11 +59,7 @@ export const PLANCK = {
     // World: World,
     Box: Box,
     Body: Body,
-    Fixture: Fixture,
-    DistanceJoint: DistanceJoint,
-    WeldJoint: WeldJoint
-
-    // TODO will need to export joint types probably
+    Fixture: Fixture
 };
 
 function setupCanvas (cvs, width, height){
@@ -247,18 +257,21 @@ export function removeSprite(sprite){
 
 /**
  * Creates a new joint
- * @param {JointDef} jointDef 
+ * @param {object} jointType one of the JOINT_* constants
  * @param {Body} spriteA 
  * @param {Body} spriteB 
+ * @param {object} jointDef optional parameters for joint
  * @returns a reference to the new joint
  */
-export function createJoint(jointDef, spriteA = null, spriteB = null){
-    if(spriteA instanceof Object
-        && spriteB instanceof Object 
-        && jointDef instanceof Object){
-            jointDef.bodyA = spriteA;
-            jointDef.bodyB = spriteB;
-        }
+export function createJoint(jointType, spriteA, spriteB, jointDef = {}){
+    switch(jointType){
+        case JOINT_DISTANCE: 
+            jointDef = new DistanceJoint(jointDef, spriteA, spriteB, spriteA.getPosition(), spriteB.getPosition());
+        default:
+            console.error("invalid joint type");
+    }
+        
+
     return _world.createJoint(jointDef);
 };
 
