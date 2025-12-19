@@ -27,6 +27,10 @@ let _world;
 
 let _bodiesToRemove = [];
 
+export const EVENT_KEY_RELEASED = "keyup";
+export const EVENT_KEY_PRESSED = "keydown";
+export const EVENT_MOUSE_MOVE = "mousemove";
+
 export const TIME_STEP = 1 / 60;
 
 /** planck.js docs - A static body does not move under simulation and behaves as if it has infinite mass. Internally, Planck.js stores zero for the mass and the inverse mass. Static bodies can be moved manually by the user. A static body always has zero velocity. Static bodies do not collide with other static or kinematic bodies. */
@@ -298,22 +302,23 @@ export function removeSprite(sprite){
  * @param {object} jointType one of the JOINT_* constants
  * @param {Body} spriteA 
  * @param {Body} spriteB 
- * @param {object} jointDef optional parameters for joint
+ * @param {object} opts optional parameters for joint
  * @returns a reference to the new joint
  */
-export function createJoint(jointType, spriteA, spriteB, jointDef = {}){
+export function createJoint(jointType, spriteA, spriteB, opts = {}){
+    let jointDef = {};
     switch(jointType){
         case JOINT_DISTANCE: 
-            jointDef = new DistanceJoint(jointDef, spriteA, spriteB);
+            jointDef = new DistanceJoint(opts, spriteA, spriteB);
             break;
         case JOINT_REVOLUTE:
-            jointDef = new RevoluteJoint(jointDef, spriteA, spriteB);
+            jointDef = new RevoluteJoint(opts, spriteA, spriteB);
             break;
         case JOINT_WELD:
-            jointDef = new WeldJoint(jointDef, spriteA, spriteB);
+            jointDef = new WeldJoint(opts, spriteA, spriteB);
             break;
         case JOINT_WHEEL:
-            jointDef = new WheelJoint(jointDef, spriteA, spriteB);
+            jointDef = new WheelJoint(opts, spriteA, spriteB, opts.anchor, opts.axis);
             break;
         default:
             console.error("invalid or unimplemented joint type: " + jointType);
