@@ -27,6 +27,9 @@ let _ctx;
 
 let _world;
 
+let _worldWidth;
+let _worldHeight;
+
 let _camera = {
     scale: 1,
     x: 0,
@@ -130,6 +133,8 @@ export function setupWorld(canvasId, width, height, worldDef){
     setupCanvas(document.getElementById(canvasId), width, height);
     const wd = worldDef === undefined ? { gravity: {x: 0, y: 10}, allowSleep: true } : worldDef;
     _world = new World(wd);
+    _worldWidth = width;
+    _worldHeight = height;
 
     _world.on('remove-joint', function(joint) {
         // TODO remove all references to joint.  
@@ -141,6 +146,12 @@ export function setupWorld(canvasId, width, height, worldDef){
         // bodies are not removed implicitly,
         // but the world publishes this event if a body is removed
     });
+    _world.setWorldDimensions = (height, width) => {
+        _worldHeight = height;
+        _worldWidth = width;
+    };
+    _world.getHeight = () => _worldHeight;
+    _world.getWidth = () => _worldWidth;
     _world.setCameraScale = (scale) => {
         _camera.scale = scale;
     };
@@ -154,9 +165,17 @@ export function setupWorld(canvasId, width, height, worldDef){
 
 /** Steps the physics simulation and draws all bodies. Be sure to call this in your animation loop. */
 export function renderFrame(){
-    clearCanvas();
-    drawBorder();
     _world.step(TIME_STEP);
+
+    clearCanvas();
+    
+    _ctx.setTransform(1, 0, 0, 1, 0, 0);
+    drawBorder();
+    _ctx.scale(_camera.scale, _camera.scale);
+    const viewableHeight = _canvas.height * _camera.scale;
+    const viewableWidth = _canvas.width * _camera.scale;
+    _ctx.translate(_camera.x - viewableWidth / 2, _camera.y - viewableHeight / 2);
+    
 
     for (let body = _world.getBodyList(); body; body = body.getNext()) {
         for (let fixture = body.getFixtureList(); fixture; fixture = fixture.getNext()) {
@@ -443,7 +462,7 @@ export function removeCollisionListener(callback){
 }
 
 
-function renderFixture(b, f, scale){
+function renderFixture(b, f){
     const shapeType = f.getType();
     const pos = b.getPosition();
     const ud = b.getUserData();
@@ -515,12 +534,6 @@ export function drawRect (x, y, width, height, color) {
     _ctx.fillRect(x, y, width, height);
 }
 
-function drawDebugRect(r){
-    _ctx.strokeStyle = "limegreen";
-    _ctx.lineWidth = 1;
-    _ctx.strokeRect(r.x, r.y, r.width, r.height);
-}
-
 export function drawCircle (x, y, radius, fillColor, strokeColor) {
     _ctx.beginPath();
     // arc(x, y, radius, startAngle, endAngle)
@@ -531,49 +544,43 @@ export function drawCircle (x, y, radius, fillColor, strokeColor) {
     _ctx.stroke();
 }
 
-function drawDebugCircle(s){
-    _ctx.strokeStyle = "limegreen";
-    _ctx.lineWidth = 1;
-    _ctx.arc(s.x, s.y, s.radius, 0, 2 * Math.PI);
-    _ctx.stroke();
-}
-
-function drawPathArray(x, y, paths, scale, debug){
-    paths.forEach(p => {
-        _ctx.lineCap = p["stroke-linecap"] ? p["stroke-linecap"] : _ctx.lineCap;
-        _ctx.lineJoin = p["stroke-linejoin"] ? p["stroke-linejoin"] : _ctx.lineJoin;
-        _ctx.lineWidth = p["stroke-width"] ? p["stroke-width"] : _ctx.lineWidth;
-        _ctx.miterLimit = p["stroke-miterlimit"] ? p["stroke-miterlimit"] : _ctx.miterLimit;
-        _ctx.translate(x, y);
-        _ctx.scale(scale, scale);
-        if(p.fill) {
-            const fillOpacity = p["fill-opacity"] ? Number.parseFloat(p["fill-opacity"]) : 1;
-            if(fillOpacity > 0 ){
-                const opAsHex = Math.trunc(fillOpacity * 255).toString(16);
-                _ctx.fillStyle = `${p.fill}${opAsHex}`;
-                _ctx.fill(p, "evenodd");
-            }
+/// TODO not quite correct
+// function drawPathArray(x, y, paths, scale, debug){
+//     paths.forEach(p => {
+//         _ctx.lineCap = p["stroke-linecap"] ? p["stroke-linecap"] : _ctx.lineCap;
+//         _ctx.lineJoin = p["stroke-linejoin"] ? p["stroke-linejoin"] : _ctx.lineJoin;
+//         _ctx.lineWidth = p["stroke-width"] ? p["stroke-width"] : _ctx.lineWidth;
+//         _ctx.miterLimit = p["stroke-miterlimit"] ? p["stroke-miterlimit"] : _ctx.miterLimit;
+//         _ctx.translate(x, y);
+//         _ctx.scale(scale, scale);
+//         if(p.fill) {
+//             const fillOpacity = p["fill-opacity"] ? Number.parseFloat(p["fill-opacity"]) : 1;
+//             if(fillOpacity > 0 ){
+//                 const opAsHex = Math.trunc(fillOpacity * 255).toString(16);
+//                 _ctx.fillStyle = `${p.fill}${opAsHex}`;
+//                 _ctx.fill(p, "evenodd");
+//             }
             
-        }
-        if(p.stroke){
-            _ctx.strokeStyle = p.stroke;
-            _ctx.stroke(p);
-        }
-        
-        _ctx.setTransform(1, 0, 0, 1, 0, 0);
-    });
-    if(debug){
-        _ctx.strokeStyle = "limegreen";
-        _ctx.lineWidth = 1;
-        _ctx.strokeRect(x, y, paths.nativeWidth * scale, paths.nativeHeight * scale)
-    }
-}
+//         }
+//         if(p.stroke){
+//             _ctx.strokeStyle = p.stroke;
+//             _ctx.stroke(p);
+//         }
+//         // TODO will need to un-translate and un-scale instead of this
+//         _ctx.setTransform(1, 0, 0, 1, 0, 0);
+//     });
+//     if(debug){
+//         _ctx.strokeStyle = "limegreen";
+//         _ctx.lineWidth = 1;
+//         _ctx.strokeRect(x, y, paths.nativeWidth * scale, paths.nativeHeight * scale)
+//     }
+// }
 
-export function drawText (x, y, text, fontSize, color){
-    _ctx.fillStyle = color;
-    _ctx.font = `${fontSize}px sans-serif`;
-    _ctx.fillText(text, x, y + fontSize);
-}
+// export function drawText (x, y, text, fontSize, color){
+//     _ctx.fillStyle = color;
+//     _ctx.font = `${fontSize}px sans-serif`;
+//     _ctx.fillText(text, x, y + fontSize);
+// }
 
 export function clearCanvas(){
     _ctx.clearRect(0, 0, _canvas.width, _canvas.height);

@@ -2,9 +2,6 @@ import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASE
 
 window.onload = start;
 
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 500;
-
 // terrain generation parameters
 const GROUND_SEGMENTS = 15;
 const MAX_VERTICAL_CHANGE = 10;
@@ -21,11 +18,12 @@ let ground;
 let world;
 
 function start(){
-    world = setupWorld("canvas", CANVAS_WIDTH, CANVAS_HEIGHT);
+    world = setupWorld("canvas", 800, 500);
     world.setGravity({ x: 0, y: 10 });
 
+    world.setCameraScale(1);
 
-    truck = createRectSprite(COLLIDER_DYNAMIC, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 4, 2.5, 1);
+    truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 4, 2.5, 1);
 
     backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 1, truck.getPosition().y + 1, 2);
     frontWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x + 1, truck.getPosition().y + 1, 2);
@@ -35,8 +33,8 @@ function start(){
     backWheelJoint.setMaxMotorTorque(1000);
    
 
-    let eachSegmentLength = CANVAS_WIDTH / GROUND_SEGMENTS;                                              
-    let vertices = [{ x: 0, y: CANVAS_HEIGHT / 2 }];
+    let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;                                              
+    let vertices = [{ x: 0, y: world.getHeight() / 2 }];
     for(let i = 1; i < GROUND_SEGMENTS; i++){
         vertices.push({
             x: eachSegmentLength * i,
@@ -53,6 +51,8 @@ function start(){
 }
 
 function drawEachFrame(timestamp){
+    let truckPos = truck.getPosition();
+    world.setCameraPosition(truckPos.x, truckPos.y);
     renderFrame();
     requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
 }
