@@ -7,20 +7,37 @@
 // - test removing sprites
 
 import { 
-    World, 
+    World,
+    Body,
+    Fixture,
     Box, 
     Circle,
     Edge,
     Chain,
-    Vec2
+    Vec2,
+    DistanceJoint,
+    WeldJoint,
+    WheelJoint,
+    RevoluteJoint
 } from "../../js/planck.mjs";
+// import { FrictionJoint, GearJoint, MotorJoint, PrismaticJoint, PulleyJoint, RevoluteJoint, RopeJoint, WheelJoint } from "./planck.mjs";
 
 let _canvas;
 let _ctx;
 
 let _world;
 
+let _camera = {
+    scale: 1,
+    x: 0,
+    y: 0
+};
+
 let _bodiesToRemove = [];
+
+export const EVENT_KEY_RELEASED = "keyup";
+export const EVENT_KEY_PRESSED = "keydown";
+export const EVENT_MOUSE_MOVE = "mousemove";
 
 export const TIME_STEP = 1 / 60;
 
@@ -33,15 +50,66 @@ export const COLLIDER_KINEMATIC = "kinematic";
 /** planck.js docs - A dynamic body is fully simulated. They can be moved manually by the user, but normally they move according to forces. A dynamic body can collide with all body types. A dynamic body always has finite, non-zero mass. If you try to set the mass of a dynamic body to zero, it will automatically acquire a mass of one kilogram and it won't rotate. */
 export const COLLIDER_DYNAMIC = "dynamic";
 
+/**
+ * a rigid rod between the two sprites
+ */
+export const JOINT_DISTANCE = "DistanceJoint";
+/**
+ * for top-down friction
+ */
+export const JOINT_FRICTION = "FrictionJoint";
+
+/**
+ * planck.js docs: A gear joint is used to connect two joints together. Either joint can be a revolute or prismatic joint
+ */
+export const JOINT_GEAR = "GearJoint";
+
+/**
+ * planck.js docs: A motor joint is used to control the relative motion between two bodies. 
+ */
+export const JOINT_MOTOR = "MotorJoint";
+/**
+ * planck.js docs: A mouse joint is used to make a point on a body track a specified world point. 
+ */
+export const JOINT_MOUSE = "MouseJoint";
+/**
+ * planck.js docs: This joint provides one degree of freedom: translation along an axis fixed in bodyA. Relative rotation is prevented. You can use a joint limit to restrict the range of motion and a joint motor to drive the motion or to model joint friction.
+ */
+export const JOINT_PRISMATIC = "PrismaticJoint";
+
+/**
+ * planck.js docs: The pulley joint is connected to two bodies and two fixed ground points.
+ */
+export const JOINT_PULLEY = "PulleyJoint";
+
+/**
+ * planck.js docs: A revolute joint constrains two bodies to share a common point while they are free to rotate about the point. The relative rotation about the shared point is the joint angle. You can limit the relative rotation with a joint limit that specifies a lower and upper angle. You can use a motor to drive the relative rotation about the shared point. A maximum motor torque is provided so that infinite forces are not generated.
+ */
+export const JOINT_REVOLUTE = "RevoluteJoint";
+
+/**
+ * planck.js docs: A rope joint enforces a maximum distance between two points on two bodies. It has no other effect.
+ */
+export const JOINT_ROPE = "RopeJoint";
+/**
+ * "glues" the two sprites together at the anchor point
+ */
+export const JOINT_WELD = "WeldJoint";
+/**
+ * planck.js docs: This joint provides two degrees of freedom: translation along an axis fixed in bodyA and rotation in the plane. In other words, it is a point to line constraint with a rotational motor and a linear spring/damper. 
+ */
+export const JOINT_WHEEL = "WheelJoint";
+
 const SHAPE_TYPE_POLYGON = "polygon";
 const SHAPE_TYPE_CIRCLE = "circle";
 const SHAPE_TYPE_EDGE = "edge";
 const SHAPE_TYPE_CHAIN = "chain";
 
 export const PLANCK = {
-    World: World,
-    Box: Box
-    // TODO will need to export joint types probably
+    // World: World,
+    Box: Box,
+    Body: Body,
+    Fixture: Fixture
 };
 
 function setupCanvas (cvs, width, height){
@@ -60,7 +128,7 @@ function setupCanvas (cvs, width, height){
  */
 export function setupWorld(canvasId, width, height, worldDef){
     setupCanvas(document.getElementById(canvasId), width, height);
-    const wd = worldDef === undefined ? { gravity: {x: 0, y: 50}, allowSleep: true } : worldDef;
+    const wd = worldDef === undefined ? { gravity: {x: 0, y: 10}, allowSleep: true } : worldDef;
     _world = new World(wd);
 
     _world.on('remove-joint', function(joint) {
@@ -73,6 +141,15 @@ export function setupWorld(canvasId, width, height, worldDef){
         // bodies are not removed implicitly,
         // but the world publishes this event if a body is removed
     });
+    _world.setCameraScale = (scale) => {
+        _camera.scale = scale;
+    };
+    _world.setCameraPosition = (x, y) => {
+        _camera.x = x;
+        _camera.y = y;
+    };
+
+    return _world;
 }
 
 /** Steps the physics simulation and draws all bodies. Be sure to call this in your animation loop. */
@@ -88,7 +165,9 @@ export function renderFrame(){
     }
 
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
-        // TODO render joints - probably just a line
+        const a = joint.getAnchorA();
+        const b = joint.getAnchorB();
+        drawLine(a.x, a.y, b.x, b.y, "black");
     }
 
     _bodiesToRemove.forEach(b => {
@@ -103,7 +182,7 @@ export function renderFrame(){
  * @param {number} initialY the sprite's beginning y position
  * @param {number} height the sprite's beginning height
  * @param {number} width the sprite's beginning width
- * @returns a reference to the new sprite (the planck.js Body)
+ * @returns {Sprite} a reference to the new sprite (the planck.js Body)
  */
 export function createRectSprite(colliderType, initialX, initialY, width, height){
     let shape = new Box(width / 2, height / 2);
@@ -118,7 +197,7 @@ export function createRectSprite(colliderType, initialX, initialY, width, height
  * @param {number} initialX the sprite's beginning x position
  * @param {number} initialY the sprite's beginning y position
  * @param {number} radius the circle sprite's radius
- * @returns a reference to the new sprite (the planck.js Body)
+ * @returns {Sprite} a reference to the new sprite (the planck.js Body)
  */
 export function createCircleSprite(colliderType, initialX, initialY, radius){    
     let shape = new Circle({ x: 0, y: 0 }, radius);
@@ -134,7 +213,7 @@ export function createCircleSprite(colliderType, initialX, initialY, radius){
  * @param {number} y1 
  * @param {number} x2 
  * @param {number} y2 
- * @returns a reference to the new sprite (the planck.js Body)
+ * @returns {Sprite} a reference to the new sprite (the planck.js Body)
  */
 export function createEdgeSprite(colliderType, x1, y1, x2, y2){
     const shape = new Edge({ x: x1, y: y1 }, { x: x2, y: y2 });
@@ -146,13 +225,29 @@ export function createEdgeSprite(colliderType, x1, y1, x2, y2){
  * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
  * @param {Vec2[]} vertices a list of points (vertices)
  * @param {boolean} [loop=false] connect the last and first points
- * @returns {object} the new sprite (planck.js Body)
+ * @returns {Sprite} the new sprite (planck.js Body)
  */
 export function createChainSprite(colliderType, vertices, loop = false){
     const shape = new Chain(vertices, loop);
     return createSprite(colliderType, 0, 0, shape);
 }
 
+/**
+ * @typedef {Object} Sprite
+ * @property {function} getTags
+ * @property {function} setTags set the tags
+ * @method setBounciness 
+ *  @param {number} bounciness
+ */
+
+/**
+ * Create a new sprite
+ * @param {string} colliderType 
+ * @param {number} initialX 
+ * @param {number} initialY 
+ * @param {object} shape 
+ * @returns {Sprite} the new sprite
+ */
 function createSprite(colliderType, initialX, initialY, shape){
     const body = _world.createBody({
         position: { x: initialX, y: initialY },
@@ -203,12 +298,52 @@ function createSprite(colliderType, initialX, initialY, shape){
         };
         return contains;
     };
+    // body.createJoint = (jointDef, other) => {
+    //     jointDef.bodyA = body;
+    //     jointDef.bodyB = other;
+    //     return _world.createJoint(jointDef)
+    // };
     return body;
 }
 
+/**
+ * Removes the given sprite from the canvas and from the physics simulation
+ * @param {object} sprite 
+ */
 export function removeSprite(sprite){
     _bodiesToRemove.push(sprite);
 }
+
+/**
+ * Creates a new joint
+ * @param {object} jointType one of the JOINT_* constants
+ * @param {Body} spriteA 
+ * @param {Body} spriteB 
+ * @param {object} opts optional parameters for joint
+ * @returns a reference to the new joint
+ */
+export function createJoint(jointType, spriteA, spriteB, opts = {}){
+    let jointDef = {};
+    switch(jointType){
+        case JOINT_DISTANCE: 
+            jointDef = new DistanceJoint(opts, spriteA, spriteB);
+            break;
+        case JOINT_REVOLUTE:
+            jointDef = new RevoluteJoint(opts, spriteA, spriteB);
+            break;
+        case JOINT_WELD:
+            jointDef = new WeldJoint(opts, spriteA, spriteB);
+            break;
+        case JOINT_WHEEL:
+            jointDef = new WheelJoint(opts, spriteA, spriteB, opts.anchor, opts.axis);
+            break;
+        default:
+            console.error("invalid or unimplemented joint type: " + jointType);
+    }
+        
+
+    return _world.createJoint(jointDef);
+};
 
 /**
  * Find sprites with the given tag.
@@ -308,7 +443,7 @@ export function removeCollisionListener(callback){
 }
 
 
-function renderFixture(b, f){
+function renderFixture(b, f, scale){
     const shapeType = f.getType();
     const pos = b.getPosition();
     const ud = b.getUserData();
@@ -340,7 +475,7 @@ function drawChain(chain, strokeColor){
     for(let i = 0; i < chain.getChildCount(); i++){
         const edge = new Edge();
         chain.getChildEdge(edge, i);
-        drawEdge(edge, );
+        drawEdge(edge, strokeColor);
     }
 }
 
@@ -460,39 +595,6 @@ export function getRandomHexByte(){
 export function getRandom(min, max) {
     return Math.random() * (max - min) + min;
 }
-
-
-// export function drawShapesObj(sObj, originX = 0, originY = 0, scale = 1, debug = false){
-//     try {
-//         if(debug){
-//             _ctx.strokeStyle = "limegreen";
-//             _ctx.strokeRect(originX, originY, sObj.nativeWidth * scale, sObj.nativeHeight * scale);
-//         }
-//         sObj.shapes.forEach((s, i) => {
-//             if(s.type){
-//                 const shapeX = originX + s.x * scale;
-//                 const shapeY = originY + s.y * scale;
-//                 switch(s.type) {
-//                     case SHAPE_TYPE_RECT:
-//                         drawRect(shapeX, shapeY, s.w * scale, s.h * scale, s.constantColor);
-//                         break;
-//                     case SHAPE_TYPE_CIRC:
-//                         drawCircle(shapeX, shapeY, s.r * scale, s.constantColor);
-//                         break;
-//                     case SHAPE_TYPE_POINT: // designer only
-//                         drawCircle(shapeX, shapeY, POINT_RADIUS, POINT_COLOR);
-//                         break;
-//                 }
-//             }
-//             else {
-//                 throw new Error("no shape type for shape at index " + i);
-//             }
-//         });
-//     }
-//     catch(e) {
-//         console.error(e);
-//     }
-// }
 
 export async function pathArrayFromSvg(svgDoc){
     const r = await fetch(svgDoc);
