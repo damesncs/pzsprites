@@ -16,14 +16,22 @@ import {
     Chain,
     Vec2,
     DistanceJoint,
-    WeldJoint
+    WeldJoint,
+    WheelJoint,
+    RevoluteJoint
 } from "../../js/planck.mjs";
-import { FrictionJoint, GearJoint, MotorJoint, PrismaticJoint, PulleyJoint, RevoluteJoint, RopeJoint, WheelJoint } from "./planck.mjs";
+// import { FrictionJoint, GearJoint, MotorJoint, PrismaticJoint, PulleyJoint, RevoluteJoint, RopeJoint, WheelJoint } from "./planck.mjs";
 
 let _canvas;
 let _ctx;
 
 let _world;
+
+let _camera = {
+    scale: 1,
+    x: 0,
+    y: 0
+};
 
 let _bodiesToRemove = [];
 
@@ -120,7 +128,7 @@ function setupCanvas (cvs, width, height){
  */
 export function setupWorld(canvasId, width, height, worldDef){
     setupCanvas(document.getElementById(canvasId), width, height);
-    const wd = worldDef === undefined ? { gravity: {x: 0, y: 50}, allowSleep: true } : worldDef;
+    const wd = worldDef === undefined ? { gravity: {x: 0, y: 10}, allowSleep: true } : worldDef;
     _world = new World(wd);
 
     _world.on('remove-joint', function(joint) {
@@ -133,6 +141,15 @@ export function setupWorld(canvasId, width, height, worldDef){
         // bodies are not removed implicitly,
         // but the world publishes this event if a body is removed
     });
+    _world.setCameraScale = (scale) => {
+        _camera.scale = scale;
+    };
+    _world.setCameraPosition = (x, y) => {
+        _camera.x = x;
+        _camera.y = y;
+    };
+
+    return _world;
 }
 
 /** Steps the physics simulation and draws all bodies. Be sure to call this in your animation loop. */
@@ -426,7 +443,7 @@ export function removeCollisionListener(callback){
 }
 
 
-function renderFixture(b, f){
+function renderFixture(b, f, scale){
     const shapeType = f.getType();
     const pos = b.getPosition();
     const ud = b.getUserData();
