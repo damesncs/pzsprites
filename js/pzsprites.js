@@ -2,9 +2,9 @@
 
 // TODO - 
 // - svg sprites
-// - support for joints
 // - collision listener for two specific sprites
 // - test removing sprites
+// - fixture z-index 
 
 import { 
     World,
@@ -26,6 +26,9 @@ let _canvas;
 let _ctx;
 
 let _world;
+
+let _worldWidth;
+let _worldHeight;
 
 let _camera = {
     scale: 1,
@@ -130,6 +133,8 @@ export function setupWorld(canvasId, width, height, worldDef){
     setupCanvas(document.getElementById(canvasId), width, height);
     const wd = worldDef === undefined ? { gravity: {x: 0, y: 10}, allowSleep: true } : worldDef;
     _world = new World(wd);
+    _worldWidth = width;
+    _worldHeight = height;
 
     _world.on('remove-joint', function(joint) {
         // TODO remove all references to joint.  
@@ -141,6 +146,12 @@ export function setupWorld(canvasId, width, height, worldDef){
         // bodies are not removed implicitly,
         // but the world publishes this event if a body is removed
     });
+    _world.setWorldDimensions = (height, width) => {
+        _worldHeight = height;
+        _worldWidth = width;
+    };
+    _world.getHeight = () => _worldHeight;
+    _world.getWidth = () => _worldWidth;
     _world.setCameraScale = (scale) => {
         _camera.scale = scale;
     };
@@ -154,9 +165,17 @@ export function setupWorld(canvasId, width, height, worldDef){
 
 /** Steps the physics simulation and draws all bodies. Be sure to call this in your animation loop. */
 export function renderFrame(){
-    clearCanvas();
-    drawBorder();
     _world.step(TIME_STEP);
+
+    clearCanvas();
+    
+    _ctx.setTransform(1, 0, 0, 1, 0, 0);
+    drawBorder();
+    _ctx.scale(_camera.scale, _camera.scale);
+    const viewableHeight = _canvas.height / _camera.scale;
+    const viewableWidth = _canvas.width / _camera.scale;
+    _ctx.translate((-_camera.x) + viewableWidth / 2, -_camera.y + viewableHeight / 2);
+    
 
     for (let body = _world.getBodyList(); body; body = body.getNext()) {
         for (let fixture = body.getFixtureList(); fixture; fixture = fixture.getNext()) {
@@ -256,19 +275,27 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.createFixture({
         shape: shape,
         density: 1,
+        friction: 0.9,
         restitution: 0.1
     });
     body.setUserData({
         fillColor: getRandomColor(),
         strokeColor: "black",
+        strokeWidth: 1,
         debug: false,
         tags: []
     });
+    // Note these physics-changing functions only operate on the first fixture
+    // can use the planck Fixture to change properties of individual fixtures 
+    // within game code
     body.setBounciness = (bounciness) => body.getFixtureList().setRestitution(bounciness);
     body.setDensity = (density) => {
         body.getFixtureList().setDensity(density);
         body.resetMassData();
-    }
+    };
+    body.setFriction = (friction) => {
+        body.getFixtureList().setFriction(friction);
+    };
     body.setUserDataProp = (p, v) => {
         let ud = body.getUserData();
         ud[p] = v;
@@ -283,6 +310,7 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.setFillColor = (color) => body.setUserDataProp("fillColor", color);
     body.getStrokeColor = () => body.getUserData().strokeColor;
     body.setStrokeColor = (color) => body.setUserDataProp("strokeColor", color);
+    body.setStrokeWidth = (width) => body.setUserDataProp("strokeWidth", width);
     body.setDebug = (debug) => body.setUserDataProp("debug", debug);
     body.addCollisionListener = (fn, tag) => {
         if(tag) addCollisionListenerForSpriteWithTag(body, tag, fn);
@@ -442,20 +470,20 @@ export function removeCollisionListener(callback){
     _world.off("pre-solve", callback);
 }
 
-
-function renderFixture(b, f, scale){
+/** Draws the given fixture on the canvas */
+function renderFixture(b, f){
     const shapeType = f.getType();
     const pos = b.getPosition();
     const ud = b.getUserData();
     const shape = f.getShape();
     if(shapeType === SHAPE_TYPE_POLYGON){
-        drawPolygon(getPolygonAbsoluteVertices(b, shape), ud.fillColor, ud.strokeColor);
+        drawPolygon(getPolygonAbsoluteVertices(b, shape), ud.fillColor, ud.strokeColor, ud.strokeWidth);
     } else if(shapeType === SHAPE_TYPE_CIRCLE){
-        drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor);
+        drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor, ud.strokeWidth);
     } else if(shapeType === SHAPE_TYPE_EDGE){
-        drawEdge(shape, ud.strokeColor);
+        drawEdge(shape, ud.strokeColor, ud.strokeWidth);
     } else if(shapeType === SHAPE_TYPE_CHAIN){
-        drawChain(shape, ud.strokeColor);
+        drawChain(shape, ud.strokeColor, ud.strokeWidth);
     } else {
         console.error("unrecognized shape type");
     }
@@ -471,19 +499,19 @@ function getPolygonAbsoluteVertices(body, shape){
     });
 }
 
-function drawChain(chain, strokeColor){
+function drawChain(chain, strokeColor, strokeWidth){
     for(let i = 0; i < chain.getChildCount(); i++){
         const edge = new Edge();
         chain.getChildEdge(edge, i);
-        drawEdge(edge, strokeColor);
+        drawEdge(edge, strokeColor, strokeWidth);
     }
 }
 
-function drawEdge(edge, strokeColor){
-    drawLine(edge.m_vertex1.x, edge.m_vertex1.y, edge.m_vertex2.x, edge.m_vertex2.y, strokeColor);
+function drawEdge(edge, strokeColor, strokeWidth){
+    drawLine(edge.m_vertex1.x, edge.m_vertex1.y, edge.m_vertex2.x, edge.m_vertex2.y, strokeColor, strokeWidth);
 }
 
-function drawPolygon(points, fillColor, strokeColor) {
+function drawPolygon(points, fillColor, strokeColor = "black", strokeWidth = 1) {
     // h/t planck testbed
     _ctx.beginPath();
     _ctx.moveTo(points[0].x, points[0].y);
@@ -491,92 +519,86 @@ function drawPolygon(points, fillColor, strokeColor) {
         _ctx.lineTo(points[i].x, points[i].y);
     }
     _ctx.closePath();
+    _ctx.lineWidth = strokeWidth;
     _ctx.strokeStyle = strokeColor;
     _ctx.stroke();
     _ctx.fillStyle = fillColor;
     _ctx.fill();
 }
 
-export function drawLine(x1, y1, x2, y2, color){
+export function drawLine(x1, y1, x2, y2, strokeColor = "black", strokeWidth = 1){
     _ctx.beginPath();
     _ctx.moveTo(x1, y1);
     _ctx.lineTo(x2, y2);
-    _ctx.strokeStyle = color;
+    _ctx.lineWidth = strokeWidth;
+    _ctx.strokeStyle = strokeColor;
     _ctx.stroke();
 }
 
-export function drawBorder(){
-    _ctx.strokeStyle = "black";
+export function drawBorder( strokeColor = "black", strokeWidth = 1){
+    _ctx.lineWidth = strokeWidth;
+    _ctx.strokeStyle = strokeColor;
     _ctx.strokeRect(0, 0, _canvas.width, _canvas.height);
 }
 
-export function drawRect (x, y, width, height, color) {
-    _ctx.fillStyle = color;
+export function drawRect (x, y, width, height, fillColor, strokeColor = "black", strokeWidth = 1) {
+    _ctx.fillStyle = fillColor;
+    _ctx.lineWidth = strokeWidth;
+    _ctx.strokeStyle = strokeColor;
     _ctx.fillRect(x, y, width, height);
 }
 
-function drawDebugRect(r){
-    _ctx.strokeStyle = "limegreen";
-    _ctx.lineWidth = 1;
-    _ctx.strokeRect(r.x, r.y, r.width, r.height);
-}
-
-export function drawCircle (x, y, radius, fillColor, strokeColor) {
+export function drawCircle (x, y, radius, fillColor, strokeColor = "black", strokeWidth = 1) {
     _ctx.beginPath();
     // arc(x, y, radius, startAngle, endAngle)
     _ctx.arc(x, y, radius, 0, 2 * Math.PI);
     _ctx.fillStyle = fillColor;
     _ctx.fill();
+    _ctx.lineWidth = strokeWidth;
     _ctx.strokeStyle = strokeColor;
     _ctx.stroke();
 }
 
-function drawDebugCircle(s){
-    _ctx.strokeStyle = "limegreen";
-    _ctx.lineWidth = 1;
-    _ctx.arc(s.x, s.y, s.radius, 0, 2 * Math.PI);
-    _ctx.stroke();
-}
-
-function drawPathArray(x, y, paths, scale, debug){
-    paths.forEach(p => {
-        _ctx.lineCap = p["stroke-linecap"] ? p["stroke-linecap"] : _ctx.lineCap;
-        _ctx.lineJoin = p["stroke-linejoin"] ? p["stroke-linejoin"] : _ctx.lineJoin;
-        _ctx.lineWidth = p["stroke-width"] ? p["stroke-width"] : _ctx.lineWidth;
-        _ctx.miterLimit = p["stroke-miterlimit"] ? p["stroke-miterlimit"] : _ctx.miterLimit;
-        _ctx.translate(x, y);
-        _ctx.scale(scale, scale);
-        if(p.fill) {
-            const fillOpacity = p["fill-opacity"] ? Number.parseFloat(p["fill-opacity"]) : 1;
-            if(fillOpacity > 0 ){
-                const opAsHex = Math.trunc(fillOpacity * 255).toString(16);
-                _ctx.fillStyle = `${p.fill}${opAsHex}`;
-                _ctx.fill(p, "evenodd");
-            }
+/// TODO not quite correct
+// function drawPathArray(x, y, paths, scale, debug){
+//     paths.forEach(p => {
+//         _ctx.lineCap = p["stroke-linecap"] ? p["stroke-linecap"] : _ctx.lineCap;
+//         _ctx.lineJoin = p["stroke-linejoin"] ? p["stroke-linejoin"] : _ctx.lineJoin;
+//         _ctx.lineWidth = p["stroke-width"] ? p["stroke-width"] : _ctx.lineWidth;
+//         _ctx.miterLimit = p["stroke-miterlimit"] ? p["stroke-miterlimit"] : _ctx.miterLimit;
+//         _ctx.translate(x, y);
+//         _ctx.scale(scale, scale);
+//         if(p.fill) {
+//             const fillOpacity = p["fill-opacity"] ? Number.parseFloat(p["fill-opacity"]) : 1;
+//             if(fillOpacity > 0 ){
+//                 const opAsHex = Math.trunc(fillOpacity * 255).toString(16);
+//                 _ctx.fillStyle = `${p.fill}${opAsHex}`;
+//                 _ctx.fill(p, "evenodd");
+//             }
             
-        }
-        if(p.stroke){
-            _ctx.strokeStyle = p.stroke;
-            _ctx.stroke(p);
-        }
-        
-        _ctx.setTransform(1, 0, 0, 1, 0, 0);
-    });
-    if(debug){
-        _ctx.strokeStyle = "limegreen";
-        _ctx.lineWidth = 1;
-        _ctx.strokeRect(x, y, paths.nativeWidth * scale, paths.nativeHeight * scale)
-    }
-}
+//         }
+//         if(p.stroke){
+//             _ctx.strokeStyle = p.stroke;
+//             _ctx.stroke(p);
+//         }
+//         // TODO will need to un-translate and un-scale instead of this
+//         _ctx.setTransform(1, 0, 0, 1, 0, 0);
+//     });
+//     if(debug){
+//         _ctx.strokeStyle = "limegreen";
+//         _ctx.lineWidth = 1;
+//         _ctx.strokeRect(x, y, paths.nativeWidth * scale, paths.nativeHeight * scale)
+//     }
+// }
 
-export function drawText (x, y, text, fontSize, color){
-    _ctx.fillStyle = color;
-    _ctx.font = `${fontSize}px sans-serif`;
-    _ctx.fillText(text, x, y + fontSize);
-}
+// export function drawText (x, y, text, fontSize, color){
+//     _ctx.fillStyle = color;
+//     _ctx.font = `${fontSize}px sans-serif`;
+//     _ctx.fillText(text, x, y + fontSize);
+// }
 
 export function clearCanvas(){
-    _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+    _ctx.clearRect(0, 0, _worldWidth, _worldHeight);
 }
 
 /** Generates a random color hex-code */
