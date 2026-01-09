@@ -519,7 +519,8 @@ function drawPolygon(points, fillColor, strokeColor = "black", strokeWidth = 1) 
         _ctx.lineTo(points[i].x, points[i].y);
     }
     _ctx.closePath();
-    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
+    _ctx.lineWidth = strokeWidth;
+    _ctx.strokeStyle = strokeColor;
     _ctx.stroke();
     _ctx.fillStyle = fillColor;
     _ctx.fill();
@@ -529,18 +530,21 @@ export function drawLine(x1, y1, x2, y2, strokeColor = "black", strokeWidth = 1)
     _ctx.beginPath();
     _ctx.moveTo(x1, y1);
     _ctx.lineTo(x2, y2);
-    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
+    _ctx.lineWidth = strokeWidth;
+    _ctx.strokeStyle = strokeColor;
     _ctx.stroke();
 }
 
 export function drawBorder( strokeColor = "black", strokeWidth = 1){
-    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
+    _ctx.lineWidth = strokeWidth;
+    _ctx.strokeStyle = strokeColor;
     _ctx.strokeRect(0, 0, _canvas.width, _canvas.height);
 }
 
 export function drawRect (x, y, width, height, fillColor, strokeColor = "black", strokeWidth = 1) {
     _ctx.fillStyle = fillColor;
-    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
+    _ctx.lineWidth = strokeWidth;
+    _ctx.strokeStyle = strokeColor;
     _ctx.fillRect(x, y, width, height);
 }
 
@@ -550,7 +554,8 @@ export function drawCircle (x, y, radius, fillColor, strokeColor = "black", stro
     _ctx.arc(x, y, radius, 0, 2 * Math.PI);
     _ctx.fillStyle = fillColor;
     _ctx.fill();
-    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
+    _ctx.lineWidth = strokeWidth;
+    _ctx.strokeStyle = strokeColor;
     _ctx.stroke();
 }
 
