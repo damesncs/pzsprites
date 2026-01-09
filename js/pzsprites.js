@@ -167,9 +167,8 @@ export function setupWorld(canvasId, width, height, worldDef){
 export function renderFrame(){
     _world.step(TIME_STEP);
 
-    clearCanvas();
-    
     _ctx.setTransform(1, 0, 0, 1, 0, 0);
+    clearCanvas();
     drawBorder();
     _ctx.scale(_camera.scale, _camera.scale);
     const viewableHeight = _canvas.height / _camera.scale;
