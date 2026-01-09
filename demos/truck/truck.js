@@ -25,14 +25,15 @@ function start(){
 
     truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 20, 8, 2);
 
-    backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 4, truck.getPosition().y + 4, 2);  
+    backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 4, truck.getPosition().y + 3, 2);  
     backWheel.setFillColor("#00000000");
-    backWheel.setFriction(0.9);
+    backWheel.setStrokeWidth(0.5);
+    
     backWheel.createFixture({
         shape: new PLANCK.Box(backWheel.radius, 0.1)
     });
-    frontWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x + 4, truck.getPosition().y + 4, 2);
-
+    frontWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x + 4, truck.getPosition().y + 3, 2);
+    frontWheel.setStrokeWidth(0.5);
 
 
     backWheelJoint = createJoint(JOINT_WHEEL, truck, backWheel, { axis: { x: 0, y: 1 }, anchor: backWheel.getPosition(), dampingRatio: 0.7, frequencyHz: 4 });
@@ -51,6 +52,7 @@ function start(){
     }
 
     ground = createChainSprite(COLLIDER_STATIC, vertices);
+    ground.setStrokeWidth(0.5);
 
     addEventListener(EVENT_KEY_PRESSED, onKeyPress);
     addEventListener(EVENT_KEY_RELEASED, onKeyRelease);

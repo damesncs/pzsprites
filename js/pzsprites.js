@@ -275,11 +275,13 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.createFixture({
         shape: shape,
         density: 1,
+        friction: 0.9,
         restitution: 0.1
     });
     body.setUserData({
         fillColor: getRandomColor(),
         strokeColor: "black",
+        strokeWidth: 1,
         debug: false,
         tags: []
     });
@@ -308,6 +310,7 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.setFillColor = (color) => body.setUserDataProp("fillColor", color);
     body.getStrokeColor = () => body.getUserData().strokeColor;
     body.setStrokeColor = (color) => body.setUserDataProp("strokeColor", color);
+    body.setStrokeWidth = (width) => body.setUserDataProp("strokeWidth", width);
     body.setDebug = (debug) => body.setUserDataProp("debug", debug);
     body.addCollisionListener = (fn, tag) => {
         if(tag) addCollisionListenerForSpriteWithTag(body, tag, fn);
@@ -467,20 +470,20 @@ export function removeCollisionListener(callback){
     _world.off("pre-solve", callback);
 }
 
-
+/** Draws the given fixture on the canvas */
 function renderFixture(b, f){
     const shapeType = f.getType();
     const pos = b.getPosition();
     const ud = b.getUserData();
     const shape = f.getShape();
     if(shapeType === SHAPE_TYPE_POLYGON){
-        drawPolygon(getPolygonAbsoluteVertices(b, shape), ud.fillColor, ud.strokeColor);
+        drawPolygon(getPolygonAbsoluteVertices(b, shape), ud.fillColor, ud.strokeColor, ud.strokeWidth);
     } else if(shapeType === SHAPE_TYPE_CIRCLE){
-        drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor);
+        drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor, ud.strokeWidth);
     } else if(shapeType === SHAPE_TYPE_EDGE){
-        drawEdge(shape, ud.strokeColor);
+        drawEdge(shape, ud.strokeColor, ud.strokeWidth);
     } else if(shapeType === SHAPE_TYPE_CHAIN){
-        drawChain(shape, ud.strokeColor);
+        drawChain(shape, ud.strokeColor, ud.strokeWidth);
     } else {
         console.error("unrecognized shape type");
     }
@@ -496,16 +499,16 @@ function getPolygonAbsoluteVertices(body, shape){
     });
 }
 
-function drawChain(chain, strokeColor){
+function drawChain(chain, strokeColor, strokeWidth){
     for(let i = 0; i < chain.getChildCount(); i++){
         const edge = new Edge();
         chain.getChildEdge(edge, i);
-        drawEdge(edge, strokeColor);
+        drawEdge(edge, strokeColor, strokeWidth);
     }
 }
 
-function drawEdge(edge, strokeColor){
-    drawLine(edge.m_vertex1.x, edge.m_vertex1.y, edge.m_vertex2.x, edge.m_vertex2.y, strokeColor);
+function drawEdge(edge, strokeColor, strokeWidth){
+    drawLine(edge.m_vertex1.x, edge.m_vertex1.y, edge.m_vertex2.x, edge.m_vertex2.y, strokeColor, strokeWidth);
 }
 
 function drawPolygon(points, fillColor, strokeColor = "black", strokeWidth = 1) {
