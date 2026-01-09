@@ -1,4 +1,4 @@
-import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, createChainSprite, createCircleSprite, createJoint, createRectSprite, getRandom, renderFrame, setupWorld } from "../../js/pzsprites.js";
+import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, createChainSprite, createCircleSprite, createJoint, createRectSprite, getRandom, renderFrame, setupWorld, PLANCK } from "../../js/pzsprites.js";
 
 window.onload = start;
 
@@ -21,16 +21,24 @@ function start(){
     world = setupWorld("canvas", 800, 500);
     world.setGravity({ x: 0, y: 10 });
 
-    world.setCameraScale(1);
+    world.setCameraScale(3);
 
-    truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 4, 2.5, 1);
+    truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 20, 8, 2);
 
-    backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 1, truck.getPosition().y + 1, 2);
-    frontWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x + 1, truck.getPosition().y + 1, 2);
+    backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 4, truck.getPosition().y + 4, 2);  
+    backWheel.setFillColor("#00000000");
+    backWheel.setFriction(0.9);
+    backWheel.createFixture({
+        shape: new PLANCK.Box(backWheel.radius, 0.1)
+    });
+    frontWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x + 4, truck.getPosition().y + 4, 2);
 
-    backWheelJoint = createJoint(JOINT_WHEEL, truck, backWheel, { axis: { x: 0, y: 1 }, anchor: backWheel.getPosition(), friction: 0.9 });
-    frontWheelJoint = createJoint(JOINT_WHEEL, truck, frontWheel, { axis: { x: 0, y: 1 }, anchor: frontWheel.getPosition(), friction: 0.9 });
-    backWheelJoint.setMaxMotorTorque(1000);
+
+
+    backWheelJoint = createJoint(JOINT_WHEEL, truck, backWheel, { axis: { x: 0, y: 1 }, anchor: backWheel.getPosition(), dampingRatio: 0.7, frequencyHz: 4 });
+    frontWheelJoint = createJoint(JOINT_WHEEL, truck, frontWheel, { axis: { x: 0, y: 1 }, anchor: frontWheel.getPosition(), dampingRatio: 0.7, frequencyHz: 4 });
+
+    backWheelJoint.setMaxMotorTorque(400);
    
 
     let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;                                              
@@ -61,16 +69,16 @@ function onKeyPress(e){
     
     if(e.key === "ArrowLeft"){
         backWheelJoint.enableMotor(true);  
-        backWheelJoint.setMotorSpeed(0);
+        backWheelJoint.setMotorSpeed(-20);
     } else if(e.key === "ArrowRight"){ 
         backWheelJoint.enableMotor(true);  
         // let speed = backWheelJoint.getMotorSpeed();
-        backWheelJoint.setMotorSpeed(-1000);
+        backWheelJoint.setMotorSpeed(20);
 
         // console.log(speed);     
     } else {
         backWheelJoint.setMotorSpeed(0);
-        // backWheelJoint.enableMotor(false);         
+        backWheelJoint.enableMotor(false);         
     }
     
            
@@ -78,5 +86,6 @@ function onKeyPress(e){
 }   
 
 function onKeyRelease(e){
-    // backWheelJoint.enableMotor(false);  
+    backWheelJoint.setMotorSpeed(0);
+    backWheelJoint.enableMotor(false);
 }

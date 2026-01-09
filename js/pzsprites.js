@@ -2,9 +2,9 @@
 
 // TODO - 
 // - svg sprites
-// - support for joints
 // - collision listener for two specific sprites
 // - test removing sprites
+// - fixture z-index 
 
 import { 
     World,
@@ -172,9 +172,9 @@ export function renderFrame(){
     _ctx.setTransform(1, 0, 0, 1, 0, 0);
     drawBorder();
     _ctx.scale(_camera.scale, _camera.scale);
-    const viewableHeight = _canvas.height * _camera.scale;
-    const viewableWidth = _canvas.width * _camera.scale;
-    _ctx.translate(_camera.x - viewableWidth / 2, _camera.y - viewableHeight / 2);
+    const viewableHeight = _canvas.height / _camera.scale;
+    const viewableWidth = _canvas.width / _camera.scale;
+    _ctx.translate((-_camera.x) + viewableWidth / 2, -_camera.y + viewableHeight / 2);
     
 
     for (let body = _world.getBodyList(); body; body = body.getNext()) {
@@ -283,11 +283,17 @@ function createSprite(colliderType, initialX, initialY, shape){
         debug: false,
         tags: []
     });
+    // Note these physics-changing functions only operate on the first fixture
+    // can use the planck Fixture to change properties of individual fixtures 
+    // within game code
     body.setBounciness = (bounciness) => body.getFixtureList().setRestitution(bounciness);
     body.setDensity = (density) => {
         body.getFixtureList().setDensity(density);
         body.resetMassData();
-    }
+    };
+    body.setFriction = (friction) => {
+        body.getFixtureList().setFriction(friction);
+    };
     body.setUserDataProp = (p, v) => {
         let ud = body.getUserData();
         ud[p] = v;
@@ -502,7 +508,7 @@ function drawEdge(edge, strokeColor){
     drawLine(edge.m_vertex1.x, edge.m_vertex1.y, edge.m_vertex2.x, edge.m_vertex2.y, strokeColor);
 }
 
-function drawPolygon(points, fillColor, strokeColor) {
+function drawPolygon(points, fillColor, strokeColor = "black", strokeWidth = 1) {
     // h/t planck testbed
     _ctx.beginPath();
     _ctx.moveTo(points[0].x, points[0].y);
@@ -510,37 +516,38 @@ function drawPolygon(points, fillColor, strokeColor) {
         _ctx.lineTo(points[i].x, points[i].y);
     }
     _ctx.closePath();
-    _ctx.strokeStyle = strokeColor;
+    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
     _ctx.stroke();
     _ctx.fillStyle = fillColor;
     _ctx.fill();
 }
 
-export function drawLine(x1, y1, x2, y2, color){
+export function drawLine(x1, y1, x2, y2, strokeColor = "black", strokeWidth = 1){
     _ctx.beginPath();
     _ctx.moveTo(x1, y1);
     _ctx.lineTo(x2, y2);
-    _ctx.strokeStyle = color;
+    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
     _ctx.stroke();
 }
 
-export function drawBorder(){
-    _ctx.strokeStyle = "black";
+export function drawBorder( strokeColor = "black", strokeWidth = 1){
+    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
     _ctx.strokeRect(0, 0, _canvas.width, _canvas.height);
 }
 
-export function drawRect (x, y, width, height, color) {
-    _ctx.fillStyle = color;
+export function drawRect (x, y, width, height, fillColor, strokeColor = "black", strokeWidth = 1) {
+    _ctx.fillStyle = fillColor;
+    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
     _ctx.fillRect(x, y, width, height);
 }
 
-export function drawCircle (x, y, radius, fillColor, strokeColor) {
+export function drawCircle (x, y, radius, fillColor, strokeColor = "black", strokeWidth = 1) {
     _ctx.beginPath();
     // arc(x, y, radius, startAngle, endAngle)
     _ctx.arc(x, y, radius, 0, 2 * Math.PI);
     _ctx.fillStyle = fillColor;
     _ctx.fill();
-    _ctx.strokeStyle = strokeColor;
+    _ctx.strokeStyle = `${strokeWidth}px ${strokeColor}`;
     _ctx.stroke();
 }
 
@@ -583,7 +590,7 @@ export function drawCircle (x, y, radius, fillColor, strokeColor) {
 // }
 
 export function clearCanvas(){
-    _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+    _ctx.clearRect(0, 0, _worldWidth, _worldHeight);
 }
 
 /** Generates a random color hex-code */
