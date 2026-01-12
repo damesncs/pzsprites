@@ -20,9 +20,9 @@ function start(){
     world.setWorldDimensions(10000, 500);
     world.setGravity({ x: 0, y: 10 });
 
-    world.setCameraScale(3);
+    world.setCameraScale(2);
 
-    truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 20, 8, 2);
+    truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, 8, 2);
 
     backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 4, truck.getPosition().y + 3, 2);  
     backWheel.setFillColor("#00000000"); // transparent

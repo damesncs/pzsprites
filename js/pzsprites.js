@@ -127,12 +127,20 @@ function setupCanvas (cvs, width, height){
     _ctx = _canvas.getContext("2d");
 }
 
+/** 
+ * @typedef {object} World
+ * @property {function} setWorldDimensions  
+ */
+
 /**
  * Performs initial setup of the physics world and the graphics canvas.
  * @param {string} canvasId the id of the canvas element
  * @param {number} width width of the canvas
  * @param {number} height height of the canvas
  * @param {object} worldDef options for the physics world (planck.js World constructor)
+ * @param {number} worldWidth width of the world, if different from the canvas width 
+ * @param {number} worldHeight height of the world, if different from the canvas height
+ * @returns {World} an object with some functions to access or modify the world
  */
 export function setupWorld(canvasId, width, height, worldDef, worldWidth, worldHeight){
     setupCanvas(document.getElementById(canvasId), width, height);
