@@ -1,12 +1,10 @@
-import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, createChainSprite, createCircleSprite, createJoint, createRectSprite, getRandom, renderFrame, setupWorld, PLANCK } from "../../js/pzsprites.js";
+import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, createChainSprite, createCircleSprite, createJoint, createRectSprite, getRandom, renderFrame, setupWorld, PLANCK, KEY_ARROW_LEFT, KEY_ARROW_RIGHT } from "../../js/pzsprites.js";
 
 window.onload = start;
 
 // terrain generation parameters
-const GROUND_SEGMENTS = 15;
+const GROUND_SEGMENTS = 200;
 const MAX_VERTICAL_CHANGE = 10;
-
-const MAX_SPEED = 10;
 
 let truck;
 let frontWheel;
@@ -19,6 +17,7 @@ let world;
 
 function start(){
     world = setupWorld("canvas", 800, 500);
+    world.setWorldDimensions(10000, 500);
     world.setGravity({ x: 0, y: 10 });
 
     world.setCameraScale(3);
@@ -26,21 +25,19 @@ function start(){
     truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 20, 8, 2);
 
     backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 4, truck.getPosition().y + 3, 2);  
-    backWheel.setFillColor("#00000000");
+    backWheel.setFillColor("#00000000"); // transparent
     backWheel.setStrokeWidth(0.5);
-    
+    // add another fixture on the back wheel so that we can see it turning.
     backWheel.createFixture({
         shape: new PLANCK.Box(backWheel.radius, 0.1)
     });
     frontWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x + 4, truck.getPosition().y + 3, 2);
     frontWheel.setStrokeWidth(0.5);
 
-
     backWheelJoint = createJoint(JOINT_WHEEL, truck, backWheel, { axis: { x: 0, y: 1 }, anchor: backWheel.getPosition(), dampingRatio: 0.7, frequencyHz: 4 });
     frontWheelJoint = createJoint(JOINT_WHEEL, truck, frontWheel, { axis: { x: 0, y: 1 }, anchor: frontWheel.getPosition(), dampingRatio: 0.7, frequencyHz: 4 });
 
-    backWheelJoint.setMaxMotorTorque(400);
-   
+    backWheelJoint.setMaxMotorTorque(500);
 
     let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;                                              
     let vertices = [{ x: 0, y: world.getHeight() / 2 }];
@@ -68,23 +65,16 @@ function drawEachFrame(timestamp){
 }
 
 function onKeyPress(e){
-    
-    if(e.key === "ArrowLeft"){
+    if(e.key === KEY_ARROW_LEFT){
         backWheelJoint.enableMotor(true);  
         backWheelJoint.setMotorSpeed(-20);
-    } else if(e.key === "ArrowRight"){ 
+    } else if(e.key === KEY_ARROW_RIGHT){ 
         backWheelJoint.enableMotor(true);  
-        // let speed = backWheelJoint.getMotorSpeed();
         backWheelJoint.setMotorSpeed(20);
-
-        // console.log(speed);     
     } else {
         backWheelJoint.setMotorSpeed(0);
         backWheelJoint.enableMotor(false);         
     }
-    
-           
-    
 }   
 
 function onKeyRelease(e){

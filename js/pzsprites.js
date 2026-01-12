@@ -42,6 +42,11 @@ export const EVENT_KEY_RELEASED = "keyup";
 export const EVENT_KEY_PRESSED = "keydown";
 export const EVENT_MOUSE_MOVE = "mousemove";
 
+export const KEY_ARROW_UP = "ArrowUp";
+export const KEY_ARROW_DOWN = "ArrowDown";
+export const KEY_ARROW_LEFT = "ArrowLeft";
+export const KEY_ARROW_RIGHT = "ArrowRight";
+
 export const TIME_STEP = 1 / 60;
 
 /** planck.js docs - A static body does not move under simulation and behaves as if it has infinite mass. Internally, Planck.js stores zero for the mass and the inverse mass. Static bodies can be moved manually by the user. A static body always has zero velocity. Static bodies do not collide with other static or kinematic bodies. */
@@ -129,12 +134,12 @@ function setupCanvas (cvs, width, height){
  * @param {number} height height of the canvas
  * @param {object} worldDef options for the physics world (planck.js World constructor)
  */
-export function setupWorld(canvasId, width, height, worldDef){
+export function setupWorld(canvasId, width, height, worldDef, worldWidth, worldHeight){
     setupCanvas(document.getElementById(canvasId), width, height);
     const wd = worldDef === undefined ? { gravity: {x: 0, y: 10}, allowSleep: true } : worldDef;
     _world = new World(wd);
-    _worldWidth = width;
-    _worldHeight = height;
+    _worldWidth = worldWidth ? worldWidth : width;
+    _worldHeight = worldHeight ? worldHeight: height;
 
     _world.on('remove-joint', function(joint) {
         // TODO remove all references to joint.  
@@ -146,7 +151,7 @@ export function setupWorld(canvasId, width, height, worldDef){
         // bodies are not removed implicitly,
         // but the world publishes this event if a body is removed
     });
-    _world.setWorldDimensions = (height, width) => {
+    _world.setWorldDimensions = (width, height) => {
         _worldHeight = height;
         _worldWidth = width;
     };
