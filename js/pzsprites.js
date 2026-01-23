@@ -538,7 +538,7 @@ function renderFixture(b, f){
     if(b.paths){
         // draw SVG path array
         // NOTE: the SVG document will always be rectangular, but the sprite can be a circle or polygon.
-        // The SVG box is drawn centered on the body position.
+        // The SVG view box is drawn centered on the body position.
         drawPathArray(pos.x, pos.y, b.pathsOriginXOffset, b.pathsOriginYOffset, b.paths, b.scale, b.getAngle());
         if(ud.debug){
             drawPolygon(getPolygonAbsoluteVertices(b, shape), "#00000000", "limegreen", 1);
@@ -568,6 +568,39 @@ function getPolygonAbsoluteVertices(body, shape){
     return shape.m_vertices.map(v => {
         return body.getWorldPoint(v);
     });
+}
+
+/**
+ * Creates an array of Path2D objects from an SVG document. 
+ * Designed to work with Google-Drawing-created .svg documents
+ * @param {string} svgDoc file path relative to main game file
+ * @returns {Path2D[]} paths
+ */
+export async function pathArrayFromSvg(svgDoc){
+    const r = await fetch(svgDoc);
+    const s = await r.text();
+    
+    const svgTempCtr = document.createElement("div");
+    svgTempCtr.id = "svg-temp-container";
+    svgTempCtr.style.display = "none";
+    svgTempCtr.innerHTML = s;
+    document.body.appendChild(svgTempCtr);
+
+    const paths = [];
+    
+    const pathQL = document.querySelectorAll("div#svg-temp-container svg g path");
+    pathQL.forEach(pathEl => {
+        const p = new Path2D(pathEl.getAttribute("d"));
+        for(const attr of pathEl.attributes) {
+            p[attr.name] = attr.value;
+        }
+        paths.push(p);
+    });
+    const vb = svgTempCtr.firstChild.getAttribute("viewBox").split(" ");
+    paths.nativeWidth = vb[2];
+    paths.nativeHeight = vb[3];
+    document.body.removeChild(svgTempCtr);
+    return paths;
 }
 
 function drawChain(chain, strokeColor, strokeWidth){
@@ -632,11 +665,14 @@ export function drawCircle (x, y, radius, fillColor, strokeColor = "black", stro
 
 /**
  * Draw an array of Path2D objects.
- * @param {number} originX origin x
- * @param {number} originY origin y
- * @param {Path2D[]} paths 
+ * Paths are drawn relative to the rectangular view box of the source SVG document. 
+ * @param {number} centerX x of the center of the view box
+ * @param {number} centerY y of the center of the view box
+ * @param {number} originOffsetX x offset of origin from center
+ * @param {number} originOffsetY y offset of origin from center
+ * @param {Path2D[]} paths the paths to draw (as created by pathArrayFromSvg)
  * @param {number} scale scale factor
- * @param {number} angle rotation in radians
+ * @param {number} angle rotation in radians (around the center)
  */
 function drawPathArray(centerX, centerY, originOffsetX, originOffsetY, paths, scale, angle){
     _ctx.save();
@@ -664,7 +700,6 @@ function drawPathArray(centerX, centerY, originOffsetX, originOffsetY, paths, sc
     });
     _ctx.scale(-scale, -scale);
     _ctx.rotate(angle);
-    
     _ctx.restore();
 }
 
@@ -693,32 +728,4 @@ export function getRandomHexByte(){
 // h/t MDN
 export function getRandom(min, max) {
     return Math.random() * (max - min) + min;
-}
-
-export async function pathArrayFromSvg(svgDoc){
-    const r = await fetch(svgDoc);
-    const s = await r.text();
-    
-    const svgTempCtr = document.createElement("div");
-    svgTempCtr.id = "svg-temp-container";
-    svgTempCtr.style.display = "none";
-    svgTempCtr.innerHTML = s;
-    document.body.appendChild(svgTempCtr);
-
-    const paths = [];
-    // TODO apply transform for scaling?
-    
-    const pathQL = document.querySelectorAll("div#svg-temp-container svg g path");
-    pathQL.forEach(pathEl => {
-        const p = new Path2D(pathEl.getAttribute("d"));
-        for(const attr of pathEl.attributes) {
-            p[attr.name] = attr.value;
-        }
-        paths.push(p);
-    });
-    const vb = svgTempCtr.firstChild.getAttribute("viewBox").split(" ");
-    paths.nativeWidth = vb[2];
-    paths.nativeHeight = vb[3];
-    document.body.removeChild(svgTempCtr);
-    return paths;
 }
