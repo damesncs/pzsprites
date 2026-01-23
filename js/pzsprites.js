@@ -10,6 +10,7 @@ import {
     World,
     Body,
     Fixture,
+    Polygon,
     Box, 
     Circle,
     Edge,
@@ -41,6 +42,11 @@ let _bodiesToRemove = [];
 export const EVENT_KEY_RELEASED = "keyup";
 export const EVENT_KEY_PRESSED = "keydown";
 export const EVENT_MOUSE_MOVE = "mousemove";
+
+export const KEY_ARROW_UP = "ArrowUp";
+export const KEY_ARROW_DOWN = "ArrowDown";
+export const KEY_ARROW_LEFT = "ArrowLeft";
+export const KEY_ARROW_RIGHT = "ArrowRight";
 
 export const TIME_STEP = 1 / 60;
 
@@ -122,19 +128,27 @@ function setupCanvas (cvs, width, height){
     _ctx = _canvas.getContext("2d");
 }
 
+/** 
+ * @typedef {object} World
+ * @property {function} setWorldDimensions  
+ */
+
 /**
  * Performs initial setup of the physics world and the graphics canvas.
  * @param {string} canvasId the id of the canvas element
  * @param {number} width width of the canvas
  * @param {number} height height of the canvas
  * @param {object} worldDef options for the physics world (planck.js World constructor)
+ * @param {number} worldWidth width of the world, if different from the canvas width 
+ * @param {number} worldHeight height of the world, if different from the canvas height
+ * @returns {World} an object with some functions to access or modify the world
  */
-export function setupWorld(canvasId, width, height, worldDef){
+export function setupWorld(canvasId, width, height, worldDef, worldWidth, worldHeight){
     setupCanvas(document.getElementById(canvasId), width, height);
     const wd = worldDef === undefined ? { gravity: {x: 0, y: 10}, allowSleep: true } : worldDef;
     _world = new World(wd);
-    _worldWidth = width;
-    _worldHeight = height;
+    _worldWidth = worldWidth ? worldWidth : width;
+    _worldHeight = worldHeight ? worldHeight: height;
 
     _world.on('remove-joint', function(joint) {
         // TODO remove all references to joint.  
@@ -146,7 +160,7 @@ export function setupWorld(canvasId, width, height, worldDef){
         // bodies are not removed implicitly,
         // but the world publishes this event if a body is removed
     });
-    _world.setWorldDimensions = (height, width) => {
+    _world.setWorldDimensions = (width, height) => {
         _worldHeight = height;
         _worldWidth = width;
     };
@@ -167,15 +181,13 @@ export function setupWorld(canvasId, width, height, worldDef){
 export function renderFrame(){
     _world.step(TIME_STEP);
 
-    clearCanvas();
-    
     _ctx.setTransform(1, 0, 0, 1, 0, 0);
+    clearCanvas();
     drawBorder();
     _ctx.scale(_camera.scale, _camera.scale);
     const viewableHeight = _canvas.height / _camera.scale;
     const viewableWidth = _canvas.width / _camera.scale;
     _ctx.translate((-_camera.x) + viewableWidth / 2, -_camera.y + viewableHeight / 2);
-    
 
     for (let body = _world.getBodyList(); body; body = body.getNext()) {
         for (let fixture = body.getFixtureList(); fixture; fixture = fixture.getNext()) {
@@ -195,6 +207,7 @@ export function renderFrame(){
     _bodiesToRemove = [];
 }
 
+
 /** Creates a rectangular sprite
  * @param {string} colliderType one of: "dynamic", "static", or "kinematic". Use the COLLIDER_* constants.
  * @param {number} initialX the sprite's beginning x position
@@ -204,8 +217,8 @@ export function renderFrame(){
  * @returns {Sprite} a reference to the new sprite (the planck.js Body)
  */
 export function createRectSprite(colliderType, initialX, initialY, width, height){
-    let shape = new Box(width / 2, height / 2);
-    let sprite = createSprite(colliderType, initialX, initialY, shape);
+    const shape = new Box(width / 2, height / 2);
+    const sprite = createSprite(colliderType, initialX, initialY, shape);
     sprite.width = width;
     sprite.height = height;
     return sprite;
@@ -219,8 +232,8 @@ export function createRectSprite(colliderType, initialX, initialY, width, height
  * @returns {Sprite} a reference to the new sprite (the planck.js Body)
  */
 export function createCircleSprite(colliderType, initialX, initialY, radius){    
-    let shape = new Circle({ x: 0, y: 0 }, radius);
-    let sprite = createSprite(colliderType, initialX, initialY, shape);
+    const shape = new Circle({ x: 0, y: 0 }, radius);
+    const sprite = createSprite(colliderType, initialX, initialY, shape);
     sprite.radius = radius;
     return sprite;
 }
@@ -249,6 +262,52 @@ export function createEdgeSprite(colliderType, x1, y1, x2, y2){
 export function createChainSprite(colliderType, vertices, loop = false){
     const shape = new Chain(vertices, loop);
     return createSprite(colliderType, 0, 0, shape);
+}
+
+/**
+ * Create a polygon sprite 
+ * @param {string} colliderType 
+ * @param {number} initialX 
+ * @param {number} initialY 
+ * @param {Vec2[]} vertices 
+ * @returns 
+ */
+export function createPolygonSprite(colliderType, initialX, initialY, vertices){
+    const shape = new Polygon(vertices);
+    const sprite = createSprite(colliderType, initialX, initialY, shape);
+    return sprite;
+}
+
+/**
+ * Create a polygon sprite rendered as an SVG path array.
+ * @param {string} colliderType one of: `dynamic`, `static`, or `kinematic`. Use the `COLLIDER_*` constants.
+ * @param {number} initialX 
+ * @param {number} initialY 
+ * @param {Vec2[]} vertices optionally, an array of vertex objects giving points relative to body center (i.e., `initialX`, `initialY`).
+ *  These form the fixture used by the physics simulation.
+ *  If none is provided, a box is created by applying the scale factor to the native SVG view box.
+ * @param {string} svgFilePath the path to the .svg document (relative to main game file)
+ * @param {number} scale scale factor to apply to SVG path array
+ * @returns {Sprite} the new sprite
+ */
+export async function createPolygonSVGSprite(colliderType, initialX, initialY, svgFilePath, scale = 1, vertices = []){
+    const paths = await pathArrayFromSvg(svgFilePath);
+    let shape;
+    // the SVG viewbox is always rectangular, so this is the offset of the paths' origin from the body center
+    const pathsOriginXOffset = paths.nativeWidth * scale / 2;
+    const pathsOriginYOffset = paths.nativeHeight * scale / 2;
+    if(vertices.length > 0){
+        shape = new Polygon(vertices);
+    }
+    else {
+        shape = new Box(pathsOriginXOffset, pathsOriginYOffset);
+    }
+    const sprite = createSprite(colliderType, initialX, initialY, shape);
+    sprite.paths = paths;
+    sprite.scale = scale;
+    sprite.pathsOriginXOffset = pathsOriginXOffset;
+    sprite.pathsOriginYOffset = pathsOriginYOffset;
+    return sprite;
 }
 
 /**
@@ -285,8 +344,8 @@ function createSprite(colliderType, initialX, initialY, shape){
         debug: false,
         tags: []
     });
-    // Note these physics-changing functions only operate on the first fixture
-    // can use the planck Fixture to change properties of individual fixtures 
+    // Note these physics-changing functions only operate on the first fixture.
+    // Can use the planck Fixture to change properties of individual fixtures 
     // within game code
     body.setBounciness = (bounciness) => body.getFixtureList().setRestitution(bounciness);
     body.setDensity = (density) => {
@@ -476,20 +535,32 @@ function renderFixture(b, f){
     const pos = b.getPosition();
     const ud = b.getUserData();
     const shape = f.getShape();
-    if(shapeType === SHAPE_TYPE_POLYGON){
-        drawPolygon(getPolygonAbsoluteVertices(b, shape), ud.fillColor, ud.strokeColor, ud.strokeWidth);
-    } else if(shapeType === SHAPE_TYPE_CIRCLE){
-        drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor, ud.strokeWidth);
-    } else if(shapeType === SHAPE_TYPE_EDGE){
-        drawEdge(shape, ud.strokeColor, ud.strokeWidth);
-    } else if(shapeType === SHAPE_TYPE_CHAIN){
-        drawChain(shape, ud.strokeColor, ud.strokeWidth);
+    if(b.paths){
+        // draw SVG path array
+        // NOTE: the SVG document will always be rectangular, but the sprite can be a circle or polygon.
+        // The SVG view box is drawn centered on the body position.
+        drawPathArray(pos.x, pos.y, b.pathsOriginXOffset, b.pathsOriginYOffset, b.paths, b.scale, b.getAngle());
+        if(ud.debug){
+            drawPolygon(getPolygonAbsoluteVertices(b, shape), "#00000000", "limegreen", 1);
+        }               
     } else {
-        console.error("unrecognized shape type");
+        // draw simple shape
+        if(shapeType === SHAPE_TYPE_POLYGON){
+            drawPolygon(getPolygonAbsoluteVertices(b, shape), ud.fillColor, ud.strokeColor, ud.strokeWidth);
+        } else if(shapeType === SHAPE_TYPE_CIRCLE){
+            drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor, ud.strokeWidth);
+        } else if(shapeType === SHAPE_TYPE_EDGE){
+            drawEdge(shape, ud.strokeColor, ud.strokeWidth);
+        } else if(shapeType === SHAPE_TYPE_CHAIN){
+            drawChain(shape, ud.strokeColor, ud.strokeWidth);
+        } else {
+            console.error("unrecognized shape type");
+        }
     }
-    if(b.getUserData().debug === true){
+    
+    if(ud.debug === true){
         // draw body center
-        drawCircle(pos.x, pos.y, 3, "limegreen", "limegreen");
+        drawCircle(pos.x, pos.y, 2, "limegreen", "limegreen");
     }
 }
 
@@ -497,6 +568,39 @@ function getPolygonAbsoluteVertices(body, shape){
     return shape.m_vertices.map(v => {
         return body.getWorldPoint(v);
     });
+}
+
+/**
+ * Creates an array of Path2D objects from an SVG document. 
+ * Designed to work with Google-Drawing-created .svg documents
+ * @param {string} svgDoc file path relative to main game file
+ * @returns {Path2D[]} paths
+ */
+export async function pathArrayFromSvg(svgDoc){
+    const r = await fetch(svgDoc);
+    const s = await r.text();
+    
+    const svgTempCtr = document.createElement("div");
+    svgTempCtr.id = "svg-temp-container";
+    svgTempCtr.style.display = "none";
+    svgTempCtr.innerHTML = s;
+    document.body.appendChild(svgTempCtr);
+
+    const paths = [];
+    
+    const pathQL = document.querySelectorAll("div#svg-temp-container svg g path");
+    pathQL.forEach(pathEl => {
+        const p = new Path2D(pathEl.getAttribute("d"));
+        for(const attr of pathEl.attributes) {
+            p[attr.name] = attr.value;
+        }
+        paths.push(p);
+    });
+    const vb = svgTempCtr.firstChild.getAttribute("viewBox").split(" ");
+    paths.nativeWidth = vb[2];
+    paths.nativeHeight = vb[3];
+    document.body.removeChild(svgTempCtr);
+    return paths;
 }
 
 function drawChain(chain, strokeColor, strokeWidth){
@@ -559,43 +663,51 @@ export function drawCircle (x, y, radius, fillColor, strokeColor = "black", stro
     _ctx.stroke();
 }
 
-/// TODO not quite correct
-// function drawPathArray(x, y, paths, scale, debug){
-//     paths.forEach(p => {
-//         _ctx.lineCap = p["stroke-linecap"] ? p["stroke-linecap"] : _ctx.lineCap;
-//         _ctx.lineJoin = p["stroke-linejoin"] ? p["stroke-linejoin"] : _ctx.lineJoin;
-//         _ctx.lineWidth = p["stroke-width"] ? p["stroke-width"] : _ctx.lineWidth;
-//         _ctx.miterLimit = p["stroke-miterlimit"] ? p["stroke-miterlimit"] : _ctx.miterLimit;
-//         _ctx.translate(x, y);
-//         _ctx.scale(scale, scale);
-//         if(p.fill) {
-//             const fillOpacity = p["fill-opacity"] ? Number.parseFloat(p["fill-opacity"]) : 1;
-//             if(fillOpacity > 0 ){
-//                 const opAsHex = Math.trunc(fillOpacity * 255).toString(16);
-//                 _ctx.fillStyle = `${p.fill}${opAsHex}`;
-//                 _ctx.fill(p, "evenodd");
-//             }
-            
-//         }
-//         if(p.stroke){
-//             _ctx.strokeStyle = p.stroke;
-//             _ctx.stroke(p);
-//         }
-//         // TODO will need to un-translate and un-scale instead of this
-//         _ctx.setTransform(1, 0, 0, 1, 0, 0);
-//     });
-//     if(debug){
-//         _ctx.strokeStyle = "limegreen";
-//         _ctx.lineWidth = 1;
-//         _ctx.strokeRect(x, y, paths.nativeWidth * scale, paths.nativeHeight * scale)
-//     }
-// }
+/**
+ * Draw an array of Path2D objects.
+ * Paths are drawn relative to the rectangular view box of the source SVG document. 
+ * @param {number} centerX x of the center of the view box
+ * @param {number} centerY y of the center of the view box
+ * @param {number} originOffsetX x offset of origin from center
+ * @param {number} originOffsetY y offset of origin from center
+ * @param {Path2D[]} paths the paths to draw (as created by pathArrayFromSvg)
+ * @param {number} scale scale factor
+ * @param {number} angle rotation in radians (around the center)
+ */
+function drawPathArray(centerX, centerY, originOffsetX, originOffsetY, paths, scale, angle){
+    _ctx.save();
+    _ctx.translate(centerX, centerY);
+    _ctx.rotate(angle);
+    _ctx.translate(-originOffsetX, -originOffsetY);
+    _ctx.scale(scale, scale);
+    paths.forEach(p => {
+        _ctx.lineCap = p["stroke-linecap"] ? p["stroke-linecap"] : _ctx.lineCap;
+        _ctx.lineJoin = p["stroke-linejoin"] ? p["stroke-linejoin"] : _ctx.lineJoin;
+        _ctx.lineWidth = p["stroke-width"] ? p["stroke-width"] : _ctx.lineWidth;
+        _ctx.miterLimit = p["stroke-miterlimit"] ? p["stroke-miterlimit"] : _ctx.miterLimit;
+        if(p.fill) {
+            const fillOpacity = p["fill-opacity"] ? Number.parseFloat(p["fill-opacity"]) : 1;
+            if(fillOpacity > 0 ){
+                const opAsHex = Math.trunc(fillOpacity * 255).toString(16);
+                _ctx.fillStyle = `${p.fill}${opAsHex}`;
+                _ctx.fill(p, "evenodd");
+            }
+        }
+        if(p.stroke){
+            _ctx.strokeStyle = p.stroke;
+            _ctx.stroke(p);
+        }
+    });
+    _ctx.scale(-scale, -scale);
+    _ctx.rotate(angle);
+    _ctx.restore();
+}
 
-// export function drawText (x, y, text, fontSize, color){
-//     _ctx.fillStyle = color;
-//     _ctx.font = `${fontSize}px sans-serif`;
-//     _ctx.fillText(text, x, y + fontSize);
-// }
+export function drawText (x, y, text, fontSize, color){
+    _ctx.fillStyle = color;
+    _ctx.font = `${fontSize}px sans-serif`;
+    _ctx.fillText(text, x, y + fontSize);
+}
 
 export function clearCanvas(){
     _ctx.clearRect(0, 0, _worldWidth, _worldHeight);
@@ -616,32 +728,4 @@ export function getRandomHexByte(){
 // h/t MDN
 export function getRandom(min, max) {
     return Math.random() * (max - min) + min;
-}
-
-export async function pathArrayFromSvg(svgDoc){
-    const r = await fetch(svgDoc);
-    const s = await r.text();
-    
-    const svgTempCtr = document.createElement("div");
-    svgTempCtr.id = "svg-temp-container";
-    svgTempCtr.style.display = "none";
-    svgTempCtr.innerHTML = s;
-    document.body.appendChild(svgTempCtr);
-
-    const paths = [];
-    // TODO apply transform for scaling?
-    
-    const pathQL = document.querySelectorAll("div#svg-temp-container svg g path");
-    pathQL.forEach(pathEl => {
-        const p = new Path2D(pathEl.getAttribute("d"));
-        for(const attr of pathEl.attributes) {
-            p[attr.name] = attr.value;
-        }
-        paths.push(p);
-    });
-    const vb = svgTempCtr.firstChild.getAttribute("viewBox").split(" ");
-    paths.nativeWidth = vb[2];
-    paths.nativeHeight = vb[3];    
-    document.body.removeChild(svgTempCtr);
-    return paths;
 }
