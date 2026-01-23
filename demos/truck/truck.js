@@ -15,12 +15,13 @@ let ground;
 
 let world;
 
+let cameraScale = 5;
+
 function start(){
     world = setupWorld("canvas", 800, 500);
     world.setWorldDimensions(10000, 500);
     world.setGravity({ x: 0, y: 10 });
-
-    world.setCameraScale(2);
+    world.setCameraScale(cameraScale);
 
     truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, 8, 2);
 
@@ -60,11 +61,19 @@ function start(){
 function drawEachFrame(timestamp){
     let truckPos = truck.getPosition();
     world.setCameraPosition(truckPos.x, truckPos.y);
+    world.setCameraScale(cameraScale);
     renderFrame();
     requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
 }
 
 function onKeyPress(e){
+    if(e.key === "w"){
+        cameraScale -= 0.5;
+    }
+    if(e.key === "e"){
+        cameraScale += 0.5;
+    }
+
     if(e.key === KEY_ARROW_LEFT){
         backWheelJoint.enableMotor(true);  
         backWheelJoint.setMotorSpeed(-20);
@@ -74,7 +83,7 @@ function onKeyPress(e){
     } else {
         backWheelJoint.setMotorSpeed(0);
         backWheelJoint.enableMotor(false);         
-    }
+    } 
 }   
 
 function onKeyRelease(e){
