@@ -1,4 +1,4 @@
-import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, createChainSprite, createCircleSprite, createJoint, createRectSprite, getRandom, renderFrame, setupWorld, PLANCK, KEY_ARROW_LEFT, KEY_ARROW_RIGHT } from "../../js/pzsprites.js";
+import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, createChainSprite, createCircleSprite, createJoint, createRectSprite, getRandom, renderFrame, setupWorld, PLANCK, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, createPolygonSprite, createPolygonSVGSprite } from "../../js/pzsprites.js";
 
 window.onload = start;
 
@@ -15,30 +15,49 @@ let ground;
 
 let world;
 
-let cameraScale = 5;
+let cameraScale = 3;
 
-function start(){
+async function start(){
     world = setupWorld("canvas", 800, 500);
     world.setWorldDimensions(10000, 500);
     world.setGravity({ x: 0, y: 10 });
     world.setCameraScale(cameraScale);
 
-    truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, 8, 2);
+    // truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, 8, 2);
 
-    backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 4, truck.getPosition().y + 3, 2);  
+    const halfWidth = world.getWidth() / 2;
+    const halfHeight = world.getHeight() / 2;
+    // const truckVerts = [
+    //     { x: -5, y: -5 },
+    //     { x: 5, y: -5 },
+    //     { x: 5, y: 0 },
+    //     { x: -5, y: 0 }
+    // ];
+    // truck = createPolygonSprite(COLLIDER_DYNAMIC, halfWidth, halfHeight - 50, truckVerts);
+
+    truck = await createPolygonSVGSprite(COLLIDER_DYNAMIC, halfWidth, halfHeight - 50, "truck.svg", 0.1);
+    truck.setDensity(0.1);
+    // truck.setDebug(true);
+
+
+    backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 10, truck.getPosition().y + 6, 3);  
     backWheel.setFillColor("#00000000"); // transparent
     backWheel.setStrokeWidth(0.5);
     // add another fixture on the back wheel so that we can see it turning.
     backWheel.createFixture({
         shape: new PLANCK.Box(backWheel.radius, 0.1)
     });
-    frontWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x + 4, truck.getPosition().y + 3, 2);
+    frontWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x + 10, truck.getPosition().y + 6, 3);
+    frontWheel.setFillColor("#00000000"); // transparent
     frontWheel.setStrokeWidth(0.5);
+    frontWheel.createFixture({
+        shape: new PLANCK.Box(frontWheel.radius, 0.1)
+    });
 
-    backWheelJoint = createJoint(JOINT_WHEEL, truck, backWheel, { axis: { x: 0, y: 1 }, anchor: backWheel.getPosition(), dampingRatio: 0.7, frequencyHz: 4 });
-    frontWheelJoint = createJoint(JOINT_WHEEL, truck, frontWheel, { axis: { x: 0, y: 1 }, anchor: frontWheel.getPosition(), dampingRatio: 0.7, frequencyHz: 4 });
+    backWheelJoint = createJoint(JOINT_WHEEL, truck, backWheel, { axis: { x: 0, y: 1 }, anchor: backWheel.getPosition(), dampingRatio: 0.9, frequencyHz: 4 });
+    frontWheelJoint = createJoint(JOINT_WHEEL, truck, frontWheel, { axis: { x: 0, y: 1 }, anchor: frontWheel.getPosition(), dampingRatio: 0.9, frequencyHz: 4 });
 
-    backWheelJoint.setMaxMotorTorque(500);
+    backWheelJoint.setMaxMotorTorque(1500);
 
     let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;                                              
     let vertices = [{ x: 0, y: world.getHeight() / 2 }];
