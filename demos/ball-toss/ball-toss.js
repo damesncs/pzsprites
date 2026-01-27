@@ -21,13 +21,12 @@ import {
     JOINT_DISTANCE
 } from "../../js/pzsprites.js";
 
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 500;
-
 const BALL_TAG = "ball";
 const OBSTACLE_TAG = "obstacle";
 
 window.onload = start;
+
+let world;
 
 let box, bigBall, ledge;
 let draggingBall;
@@ -37,7 +36,7 @@ let mouseX = 0, mouseY = 0;
 let mouseDragging = false;
 
 async function start() {
-    setupWorld("canvas", CANVAS_WIDTH, CANVAS_HEIGHT);
+    world = setupWorld("canvas", 800, 500);
     
     box = createRectSprite(COLLIDER_DYNAMIC, 100, 100, 40, 40);
     box.setFillColor("red");
@@ -69,9 +68,9 @@ async function start() {
     // create a chain which surrounds the canvas (hard walls)
     const walls = [
         { x: 0, y: 0 },
-        { x: CANVAS_WIDTH, y: 0 },
-        { x: CANVAS_WIDTH, y: CANVAS_HEIGHT },
-        { x: 0, y: CANVAS_HEIGHT }
+        { x: world.getWidth(), y: 0 },
+        { x: world.getWidth(), y: world.getHeight() },
+        { x: 0, y: world.getHeight() }
     ];
     createChainSprite(COLLIDER_STATIC, walls, true);
 
@@ -114,8 +113,8 @@ function createRandomObstacles(count){
     for(let i = 0; i < count; i++){
         const width = getRandom(5, 50);
         const height = getRandom(5, 50);
-        const x = getRandom(0, CANVAS_WIDTH - width);
-        const y = getRandom(0, CANVAS_HEIGHT - height);
+        const x = getRandom(0, world.getWidth() - width);
+        const y = getRandom(0, world.getHeight() - height);
         let obstacle = createRectSprite(COLLIDER_STATIC, x, y, width, height);
         obstacle.addTag(OBSTACLE_TAG);
     }
