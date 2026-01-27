@@ -1,7 +1,23 @@
-// v0.1 - physics provided by planck.js
+/* 
+    pzsprites.js v0.1.1
+
+    Copyright (C) 2026  David Ames
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 
 // TODO - 
-// - svg sprites
 // - collision listener for two specific sprites
 // - test removing sprites
 // - fixture z-index 
@@ -173,6 +189,8 @@ export function setupWorld(canvasId, width, height, worldDef, worldWidth, worldH
         _camera.x = x;
         _camera.y = y;
     };
+    // set camera to center by default
+    _world.setCameraPosition(_worldWidth / 2, _worldHeight / 2);
 
     return _world;
 }
@@ -427,8 +445,6 @@ export function createJoint(jointType, spriteA, spriteB, opts = {}){
         default:
             console.error("invalid or unimplemented joint type: " + jointType);
     }
-        
-
     return _world.createJoint(jointDef);
 };
 
