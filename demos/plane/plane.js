@@ -1,5 +1,25 @@
 // planck integration prototype
 
+import {
+    COLLIDER_DYNAMIC,
+    COLLIDER_STATIC,
+    createCircleSprite,
+    createRectSprite,
+    renderFrame,
+    getRandomColor,
+    getRandom,
+    setupWorld,
+    createEdgeSprite,
+    PLANCK,
+    getSpritesByTag,
+    addCollisionListener,
+    addCollisionListenerForTag,
+    removeSprite,
+    createChainSprite,
+    createJoint,
+    addCollisionListenerForSprite,
+    JOINT_DISTANCE
+} from "../../js/pzsprites.js";
 const
     // physics parameters
     AIR_DENSITY = 1.2,
@@ -60,74 +80,25 @@ window.onload = start;
 
 let world;
 
-let box, bigBall, ledge;
-let draggingBall;
-let hangingBall;
-let cursorForce = 4000; // the force the mouse cursor exerts on the dragging ball
-let mouseX = 0, mouseY = 0;
-let mouseDragging = false;
-
 async function start() {
-    //world = setupWorld("canvas", 800, 500);
-    new Canvas('16:9');
-  /*  box = createRectSprite(COLLIDER_DYNAMIC, 100, 100, 40, 40);
-    box.setFillColor("red");
-    box.addCollisionListener(onBigRedBoxBallCollision, BALL_TAG);
-
-    bigBall = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
-    bigBall.setBounciness(0.5);
-    bigBall.setFillColor("#ffffff00"); // transparent
-    // add an extra rectangle to this ball to see it rolling
-    bigBall.createFixture({
-        shape: new PLANCK.Box(bigBall.radius, 1)
-    });
-
-    ledge = createRectSprite(COLLIDER_STATIC, 400, 400, 400, 10);
-    ledge.addCollisionListener(onLedgeBallCollision, BALL_TAG);
-
-    hangingBall = createCircleSprite(COLLIDER_DYNAMIC, 400, 450, 15);
-    createJoint(JOINT_DISTANCE, hangingBall, ledge, { collideConnected: true });
-
-    const rampVertices = [
-        { x: 150, y: 200},
-        { x: 230, y: 250},
-        { x: 290, y: 300},
-        { x: 350, y: 350},
-        { x: 390, y: 390}
-    ];
-    createChainSprite(COLLIDER_STATIC, rampVertices);
-
-    // create a chain which surrounds the canvas (hard walls)
-    const walls = [
-        { x: 0, y: 0 },
-        { x: world.getWidth(), y: 0 },
-        { x: world.getWidth(), y: world.getHeight() },
-        { x: 0, y: world.getHeight() }
-    ];
-    createChainSprite(COLLIDER_STATIC, walls, true);
-
-    createRandomObstacles(8);
-    addCollisionListenerForTag(OBSTACLE_TAG, onObstacleCollision);
-
-    addEventListener("mousedown", onMouseDown);
-    addEventListener("mouseup", onMouseUp);
-    addEventListener("mousemove", onMouseMove);*/
+    world = setupWorld("canvas", 800, 500);
+    ne
+    
 
     drawEachFrame(0); // begin the animation loop
 }
 
 function drawEachFrame(timestamp){
-    applyMouseForceToDraggingBall();
     renderFrame();
     requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
 }
 
-function applyMouseForceToDraggingBall(){
+/*function applyMouseForceToDraggingBall(){
     if(mouseDragging && draggingBall){
         const center = draggingBall.getPosition();
         draggingBall.applyForceToCenter({ x: (mouseX - center.x) * cursorForce, y: (mouseY - center.y) * cursorForce });
     }
-}
+}*/
 
 function onBigRedBoxBallCollision(bigBox, ball, contact){
     ball.setFillColor("red");
