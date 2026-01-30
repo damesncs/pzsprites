@@ -18,8 +18,10 @@ import {
     createChainSprite,
     createJoint,
     addCollisionListenerForSprite,
-    JOINT_DISTANCE
+    JOINT_DISTANCE,
+     EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, createPolygonSprite, createPolygonSVGSprite
 } from "../../js/pzsprites.js";
+
 const
     // physics parameters
     AIR_DENSITY = 1.2,
@@ -51,7 +53,7 @@ const vectorRefPoints = [];
 let vectorRefAvgPoint = {x: 0, y: 0};
 
 // sprites
-let plane, planeWheel, planeTailWheel, planeNose,
+let plane, frontWheel, frontWheelJoint, planeTailWheel, planeNose,
     noseJoint, wheelJoint, tailWheelJoint, exhaust,
 
     ground, display, debugRefPoint,
@@ -80,11 +82,25 @@ window.onload = start;
 
 let world;
 
-async function start() {
+ async function start() {
     world = setupWorld("canvas", 800, 500);
-    ne
-    
+    world.setGravity({ x: 0, y: 10 });
 
+    ground = createRectSprite("static", GROUND_WIDTH / 2 , world.getHeight() - GROUND_HEIGHT, GROUND_WIDTH, GROUND_HEIGHT);
+    ground.setFillColor("#964B00");
+    ground.setFriction(10);
+    //let truck;
+    //truck = await createPolygonSVGSprite(COLLIDER_DYNAMIC, 100, 50, "truck.svg", 0.1);
+    plane = await createPolygonSprite("COLLIDER_DYNAMIC", world.getWidth() / 2, world.getHeight() / 2 - 50, 0.1)
+   // frontWheel = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x + 10, plane.getPosition().y + 6, 3);
+    //frontWheel.setFillColor("#00000000"); // transparent
+    //frontWheel.setStrokeWidth(0.5);
+    frontWheel.createFixture({
+        shape: new PLANCK.Box(frontWheel.radius, 0.1)
+    });
+    frontWheelJoint = createJoint(JOINT_WHEEL, plane, frontWheel, { axis: { x: 0, y: 1 }, anchor: frontWheel.getPosition(), dampingRatio: 0.9, frequencyHz: 4 });
+
+    
     drawEachFrame(0); // begin the animation loop
 }
 

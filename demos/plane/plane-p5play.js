@@ -80,8 +80,8 @@ function setup() {
     ground = new Sprite();
     ground.amount = 1;
     ground.height = GROUND_HEIGHT;
-    ground.width = GROUND_WIDTH;
-    ground.x = GROUND_WIDTH / 2 - width;
+    ground.width = GROUND_WIDTH - width;
+    ground.x = GROUND_WIDTH / 2 ;
     ground.y = height;
     ground.color = 'brown';
     ground.collider = 'static';
@@ -116,7 +116,7 @@ function setup() {
     plane.bounciness = 0;
     // console.log(`plane mass ${plane.mass}`); // mass is calculated by p5play based on sprite dimensions
     
-    // plane.debug = true; // uncomment to show sprite outline
+     plane.debug = true; // uncomment to show sprite outline
     
     planeNose = new Sprite(plane.x + 25, plane.y, 1);
     
