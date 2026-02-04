@@ -17,15 +17,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// TODO - 
-// - collision listener for two specific sprites
-// - test removing sprites
-// - fixture z-index 
-
 import { 
     World,
     Body,
     Fixture,
+    Shape,
     Polygon,
     Box, 
     Circle,
@@ -310,21 +306,42 @@ export function createPolygonSprite(colliderType, initialX, initialY, vertices){
  */
 export async function createPolygonSVGSprite(colliderType, initialX, initialY, svgFilePath, scale = 1, vertices = []){
     const paths = await pathArrayFromSvg(svgFilePath);
-    let shape;
+
     // the SVG viewbox is always rectangular, so this is the offset of the paths' origin from the body center
-    const pathsOriginXOffset = paths.nativeWidth * scale / 2;
-    const pathsOriginYOffset = paths.nativeHeight * scale / 2;
-    if(vertices.length > 0){
-        shape = new Polygon(vertices);
-    }
-    else {
-        shape = new Box(pathsOriginXOffset, pathsOriginYOffset);
-    }
-    const sprite = createSprite(colliderType, initialX, initialY, shape);
+    const determineOffset = (w, h, s) => {
+        return {
+            x: w * s / 2,
+            y: h * s / 2
+        }
+    };
+
+    // this is assuming that supplied polygon vertices are properly relative to body origin
+    const determineShape = (newVertices, newPaths, scaleFactor) => {
+        if(newVertices.length > 0){
+            return new Polygon(newVertices);
+        }
+        else {
+            const offset = determineOffset(newPaths.nativeWidth, newPaths.nativeHeight, scaleFactor);
+            return new Box(offset.x, offset.y);
+        }
+    };
+    
+    const sprite = createSprite(colliderType, initialX, initialY, determineShape(vertices, paths, scale));
     sprite.paths = paths;
-    sprite.scale = scale;
-    sprite.pathsOriginXOffset = pathsOriginXOffset;
-    sprite.pathsOriginYOffset = pathsOriginYOffset;
+    sprite.vertices = vertices;
+
+
+    sprite.setScale = (newScale) => {
+        sprite.scale = newScale;
+        sprite.vertices.forEach(v => {
+            v.x *= newScale;
+            v.y *= newScale;
+        });
+        sprite.setShape(determineShape(sprite.vertices, sprite.paths, sprite.scale));
+        sprite.pathsOffset = determineOffset(sprite.paths.nativeWidth, sprite.paths.nativeHeight, sprite.scale);
+    };
+
+    sprite.setScale(scale);
     return sprite;
 }
 
@@ -349,12 +366,11 @@ function createSprite(colliderType, initialX, initialY, shape){
         position: { x: initialX, y: initialY },
         type: colliderType
     });
-    body.createFixture({
-        shape: shape,
-        density: 1,
-        friction: 0.9,
-        restitution: 0.1
-    });
+    body.createFixture({ shape: shape });
+    body.setShape = (newShape) => {
+        body.destroyFixture(body.getFixtureList());
+        body.createFixture({ shape: newShape });
+    };
     body.setUserData({
         fillColor: getRandomColor(),
         strokeColor: "black",
@@ -555,7 +571,7 @@ function renderFixture(b, f){
         // draw SVG path array
         // NOTE: the SVG document will always be rectangular, but the sprite can be a circle or polygon.
         // The SVG view box is drawn centered on the body position.
-        drawPathArray(pos.x, pos.y, b.pathsOriginXOffset, b.pathsOriginYOffset, b.paths, b.scale, b.getAngle());
+        drawPathArray(pos.x, pos.y, b.pathsOffset.x, b.pathsOffset.y, b.paths, b.scale, b.getAngle());
         if(ud.debug){
             drawPolygon(getPolygonAbsoluteVertices(b, shape), "#00000000", "limegreen", 1);
         }               
@@ -576,7 +592,7 @@ function renderFixture(b, f){
     
     if(ud.debug === true){
         // draw body center
-        drawCircle(pos.x, pos.y, 2, "limegreen", "limegreen");
+        drawCircle(pos.x, pos.y, 1, "limegreen", "limegreen");
     }
 }
 

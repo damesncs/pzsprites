@@ -1,0 +1,27 @@
+<html>
+  <head>
+      <title>pzsprites Polygon Tool</title>
+      <link rel="stylesheet" href="style.css">
+      <script src="./polygon-tool.js" type="module"></script>
+  </head>
+    <body>
+        <div id="tools">
+            <div class="tool">
+                <label for="svg-file">Load an SVG file: </label>
+                <input type="file" id="svg-file" accept="image/svg+xml"/>
+                <button id="reset-button" onclick="resetSVG()">Reset</button>
+            </div>
+            <div class="tool">
+                <label for="svg-scale">SVG Sprite Scale</label>
+                <input type="number" id="svg-scale" value="1" step="0.1" min="0" max="50"/>
+            </div>
+            <div class="tool">
+                <label for="camera-scale">Camera Scale</label>
+                <input type="number" id="camera-scale" value="1" step="0.1" min="0" max="50"/>
+            </div>
+        </div>
+        
+
+        <canvas id="canvas"></canvas>
+    </body>
+</html>
