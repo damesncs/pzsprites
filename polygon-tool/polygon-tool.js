@@ -1,4 +1,4 @@
-import { EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, createPolygonSVGSprite, renderFrame, setupWorld } from "../js/pzsprites.js";
+import { EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, createPolygonSVGSprite, removeSprite, renderFrame, setupWorld } from "../js/pzsprites.js";
 
 window.onload = start;
 
@@ -70,6 +70,7 @@ function setupToolElements(){
 async function loadSVG(){
     if(filePickerEl.files.length > 0){
         const b = URL.createObjectURL(filePickerEl.files[0]);
+        if(svgSprite) removeSprite(svgSprite);
         svgSprite = await createPolygonSVGSprite("none", halfWidth, halfHeight, b, scaleSpinner.value);
         svgSprite.setDebug(true);
     } else {
@@ -83,4 +84,8 @@ function onSvgScaleChange(){
 
 function onCameraScaleChange(){
     cameraScale = cameraSpinner.value;
+}
+
+function resetSVG(){
+
 }
