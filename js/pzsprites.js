@@ -191,6 +191,10 @@ export function setupWorld(canvasId, width, height, worldDef, worldWidth, worldH
     return _world;
 }
 
+export function getCanvas(){
+    return _canvas;
+}
+
 /** Steps the physics simulation and draws all bodies. Be sure to call this in your animation loop. */
 export function renderFrame(){
     _world.step(TIME_STEP);
@@ -214,6 +218,8 @@ export function renderFrame(){
         const b = joint.getAnchorB();
         drawLine(a.x, a.y, b.x, b.y, "black");
     }
+    
+    _ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     _bodiesToRemove.forEach(b => {
         _world.destroyBody(b);
