@@ -745,3 +745,6 @@ export function getRandomHexByte(){
 export function getRandom(min, max) {
     return Math.random() * (max - min) + min;
 }
+export function destroyJoint(joint) {
+    _world.destroyJoint(joint);
+  }
