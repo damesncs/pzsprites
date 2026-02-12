@@ -48,19 +48,25 @@ const
     CLOUDS_COUNT = 50 // clouds to generate
     ;
 
+// terrain generation parameters
+const GROUND_SEGMENTS = 200;
+const MAX_VERTICAL_CHANGE = 5;
+
 // const vectorRefPoint = { x: 0, y: 0};
 const vectorRefPoints = [];
 let vectorRefAvgPoint = {x: 0, y: 0};
 
 // sprites
-let plane, frontWheel, frontWheelJoint, planeTailWheel, planeNose,
-    noseJoint, wheelJoint, tailWheelJoint, exhaust,
+let plane, tailWheel, tailWheelJoint, planeTailWheel, planeNose,
+    noseJoint, exhaust,
 
     ground, display, debugRefPoint,
 
     obstacles, trees, clouds,
     
     leftBound, rightBound, planeCameraMargin;
+
+let cameraScale = 1;
 
 let flowAngle = 0, noseAngle = 0;
 
@@ -84,98 +90,41 @@ let world;
 
  async function start() {
     world = setupWorld("canvas", 800, 500);
+    world.setWorldDimensions(10000, 500);
     world.setGravity({ x: 0, y: 10 });
+    world.setCameraScale(cameraScale);
 
-    ground = createRectSprite("static", GROUND_WIDTH / 2 , world.getHeight() - GROUND_HEIGHT, GROUND_WIDTH, GROUND_HEIGHT);
-    ground.setFillColor("#964B00");
-    ground.setFriction(10);
-    //let truck;
-    //truck = await createPolygonSVGSprite(COLLIDER_DYNAMIC, 100, 50, "truck.svg", 0.1);
-    plane = await createPolygonSprite("COLLIDER_DYNAMIC", world.getWidth() / 2, world.getHeight() / 2 - 50, 0.1)
-   // frontWheel = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x + 10, plane.getPosition().y + 6, 3);
-    //frontWheel.setFillColor("#00000000"); // transparent
-    //frontWheel.setStrokeWidth(0.5);
-    frontWheel.createFixture({
-        shape: new PLANCK.Box(frontWheel.radius, 0.1)
+    let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;                                              
+    let vertices = [{ x: 0, y: world.getHeight() / 2 }];
+    for(let i = 1; i < GROUND_SEGMENTS; i++){
+        vertices.push({
+            x: eachSegmentLength * i,
+            y: vertices[i - 1].y + getRandom(-MAX_VERTICAL_CHANGE, MAX_VERTICAL_CHANGE)
+        });
+    }
+    ground = createChainSprite(COLLIDER_STATIC, vertices);
+    ground.setStrokeWidth(0.5);
+   
+    plane = await createPolygonSVGSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, "svg/Piper_J3_Cub.svg", 0.1);
+    plane.setDebug(true);
+   
+    tailWheel = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x + 10, plane.getPosition().y + 6, 3);
+    tailWheel.setFillColor("#00000000"); // transparent
+    tailWheel.setStrokeWidth(0.5);
+    tailWheel.createFixture({
+        shape: new PLANCK.Box(tailWheel.radius, 0.1)
     });
-    frontWheelJoint = createJoint(JOINT_WHEEL, plane, frontWheel, { axis: { x: 0, y: 1 }, anchor: frontWheel.getPosition(), dampingRatio: 0.9, frequencyHz: 4 });
+    tailWheelJoint = createJoint(JOINT_WHEEL, plane, tailWheel, { axis: { x: 0, y: 1 }, anchor: tailWheel.getPosition(), dampingRatio: 0.9, frequencyHz: 4 });
 
     
     drawEachFrame(0); // begin the animation loop
 }
 
 function drawEachFrame(timestamp){
+    let planePos = plane.getPosition();
+    world.setCameraPosition(planePos.x, planePos.y);
+    world.setCameraScale(cameraScale);
     renderFrame();
     requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
 }
 
-/*function applyMouseForceToDraggingBall(){
-    if(mouseDragging && draggingBall){
-        const center = draggingBall.getPosition();
-        draggingBall.applyForceToCenter({ x: (mouseX - center.x) * cursorForce, y: (mouseY - center.y) * cursorForce });
-    }
-}*/
-
-function onBigRedBoxBallCollision(bigBox, ball, contact){
-    ball.setFillColor("red");
-}
-
-function onObstacleCollision(obstacle, other, contact){
-    other.setFillColor(obstacle.getFillColor());
-}
-
-function onLedgeBallCollision(ledge, ball, contact){
-    ball.setFillColor(ledge.getFillColor());
-}
-
-function createRandomObstacles(count){
-    for(let i = 0; i < count; i++){
-        const width = getRandom(5, 50);
-        const height = getRandom(5, 50);
-        const x = getRandom(0, world.getWidth() - width);
-        const y = getRandom(0, world.getHeight() - height);
-        let obstacle = createRectSprite(COLLIDER_STATIC, x, y, width, height);
-        obstacle.addTag(OBSTACLE_TAG);
-    }
-}
-
-function onMouseMove(e){
-    if(mouseDragging){
-        mouseX = e.offsetX;
-        mouseY = e.offsetY;
-    }
-}
-
-function onMouseUp(e){
-    mouseDragging = false;
-    draggingBall.setStrokeColor("black");
-}
-
-function onMouseDown(e){
-    mouseX = e.offsetX;
-    mouseY = e.offsetY;
-
-    if(ledge.containsPoint(mouseX, mouseY)){
-        ledge.setFillColor(getRandomColor());
-    } else {
-        const balls = getSpritesByTag(BALL_TAG);
-        const touching = balls.filter(b => b.containsPoint(mouseX, mouseY));
-        if(touching.length > 0) {
-            mouseDragging = true;
-            draggingBall = touching[0];
-            draggingBall.setStrokeColor("limegreen");
-        } else {
-            mouseDragging = true;
-            createNewBall(mouseDragging);
-        }  
-    }   
-}
-
-function createNewBall(isDragging){
-    let newBall = createCircleSprite(COLLIDER_DYNAMIC, mouseX, mouseY, 15);
-    newBall.setStrokeColor("limegreen");
-    newBall.setBounciness(0.3);
-    newBall.setDensity(3);
-    newBall.addTag(BALL_TAG);
-    if(isDragging) draggingBall = newBall;
-}

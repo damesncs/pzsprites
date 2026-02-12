@@ -610,9 +610,18 @@ export async function pathArrayFromSvg(svgDoc){
         for(const attr of pathEl.attributes) {
             p[attr.name] = attr.value;
         }
+        if(p["style"]){
+            const splitStyles = p.style.split(";");
+            splitStyles.forEach(s => {
+                const split = s.indexOf(":");
+                const propKey = s.substring(0, split);
+                const propVal = s.substring(split + 1);
+                p[propKey] = propVal;
+            });
+        }
         paths.push(p);
     });
-    const vb = svgTempCtr.firstChild.getAttribute("viewBox").split(" ");
+    const vb = svgTempCtr.querySelector("svg").getAttribute("viewBox").split(" ");
     paths.nativeWidth = vb[2];
     paths.nativeHeight = vb[3];
     document.body.removeChild(svgTempCtr);
