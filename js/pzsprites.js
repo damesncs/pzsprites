@@ -416,6 +416,12 @@ function createSprite(colliderType, initialX, initialY, shape){
         };
         return contains;
     };
+    body.angleTo = (sprite) => {
+        const bodyPos = body.getPosition();
+        const otherPos = sprite.getPosition ?  sprite.getPosition() : sprite;
+        return Math.atan2(otherPos.x - bodyPos.x, otherPos.y - bodyPos.y);
+    };
+    
     // body.createJoint = (jointDef, other) => {
     //     jointDef.bodyA = body;
     //     jointDef.bodyB = other;

@@ -65,11 +65,7 @@ let plane,
     
     leftBound, rightBound, planeCameraMargin;
 
-let cameraScale = 0.5;
-
-
-// const vectorRefPoint = { x: 0, y: 0};
-
+let cameraScale = 1;
 
 // physics variables
 let drag = 0,
@@ -175,7 +171,7 @@ function calculatePlaneForces(){
             
     debugRefPoint.setPosition(vectorRefAvgPoint);
 
-    // flowAngle = getOppositeAngle(plane.angleTo(vectorRefAvgPoint));
+    flowAngle = getOppositeAngle(plane.angleTo(vectorRefAvgPoint.x, vectorRefAvgPoint.y));
     
     // // find drag force
     // // TODO apply drag to vertical movement??
