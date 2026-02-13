@@ -105,7 +105,7 @@ let world;
     ground = createChainSprite(COLLIDER_STATIC, vertices);
     ground.setStrokeWidth(0.5);
    
-    plane = await createPolygonSVGSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, "svg/Piper_J3_Cub.svg", 0.1);
+    plane = await createPolygonSVGSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, "svg/plane.svg", 0.1, [], -60, -600);
     plane.setDebug(true);
    
     tailWheel = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x + 10, plane.getPosition().y + 6, 3);

@@ -306,14 +306,16 @@ export function createPolygonSprite(colliderType, initialX, initialY, vertices){
  *  If none is provided, a box is created by applying the scale factor to the native SVG view box.
  * @param {string} svgFilePath the path to the .svg document (relative to main game file)
  * @param {number} scale scale factor to apply to SVG path array
+ * @param {number} [svgVBOffsetX=0] additional origin X offset to apply
+ * @param {number} [svgVBOffsetY=0] additional origin Y offset to apply
  * @returns {Sprite} the new sprite
  */
-export async function createPolygonSVGSprite(colliderType, initialX, initialY, svgFilePath, scale = 1, vertices = []){
+export async function createPolygonSVGSprite(colliderType, initialX, initialY, svgFilePath, scale = 1, vertices = [], svgVBOffsetX = 0, svgVBOffsetY = 0){
     const paths = await pathArrayFromSvg(svgFilePath);
     let shape;
     // the SVG viewbox is always rectangular, so this is the offset of the paths' origin from the body center
-    const pathsOriginXOffset = paths.nativeWidth * scale / 2;
-    const pathsOriginYOffset = paths.nativeHeight * scale / 2;
+    const pathsOriginXOffset = (paths.nativeWidth * scale / 2);
+    const pathsOriginYOffset = (paths.nativeHeight * scale / 2);
     if(vertices.length > 0){
         shape = new Polygon(vertices);
     }
@@ -325,6 +327,8 @@ export async function createPolygonSVGSprite(colliderType, initialX, initialY, s
     sprite.scale = scale;
     sprite.pathsOriginXOffset = pathsOriginXOffset;
     sprite.pathsOriginYOffset = pathsOriginYOffset;
+    sprite.svgVBOffsetX = svgVBOffsetX * scale;
+    sprite.svgVBOffsetY = svgVBOffsetY * scale;
     return sprite;
 }
 
@@ -554,8 +558,8 @@ function renderFixture(b, f){
     if(b.paths){
         // draw SVG path array
         // NOTE: the SVG document will always be rectangular, but the sprite can be a circle or polygon.
-        // The SVG view box is drawn centered on the body position.
-        drawPathArray(pos.x, pos.y, b.pathsOriginXOffset, b.pathsOriginYOffset, b.paths, b.scale, b.getAngle());
+        // The SVG view box is drawn centered on the body position, plus any offset (for SVG documents with translation for which we want to compensate).
+        drawPathArray(pos.x, pos.y, b.pathsOriginXOffset, b.pathsOriginYOffset, b.svgVBOffsetX, b.svgVBOffsetY, b.paths, b.scale, b.getAngle());
         if(ud.debug){
             drawPolygon(getPolygonAbsoluteVertices(b, shape), "#00000000", "limegreen", 1);
         }               
@@ -699,11 +703,12 @@ export function drawCircle (x, y, radius, fillColor, strokeColor = "black", stro
  * @param {number} scale scale factor
  * @param {number} angle rotation in radians (around the center)
  */
-function drawPathArray(centerX, centerY, originOffsetX, originOffsetY, paths, scale, angle){
+function drawPathArray(centerX, centerY, originOffsetX, originOffsetY, vbOffsetX, vbOffsetY, paths, scale, angle){
     _ctx.save();
     _ctx.translate(centerX, centerY);
     _ctx.rotate(angle);
     _ctx.translate(-originOffsetX, -originOffsetY);
+    _ctx.translate(-vbOffsetX, -vbOffsetY);
     _ctx.scale(scale, scale);
     paths.forEach(p => {
         _ctx.lineCap = p["stroke-linecap"] ? p["stroke-linecap"] : _ctx.lineCap;
