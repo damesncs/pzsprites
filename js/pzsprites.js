@@ -75,6 +75,9 @@ export const COLLIDER_KINEMATIC = "kinematic";
 /** planck.js docs - A dynamic body is fully simulated. They can be moved manually by the user, but normally they move according to forces. A dynamic body can collide with all body types. A dynamic body always has finite, non-zero mass. If you try to set the mass of a dynamic body to zero, it will automatically acquire a mass of one kilogram and it won't rotate. */
 export const COLLIDER_DYNAMIC = "dynamic";
 
+/** don't collide */
+export const COLLIDER_NONE = "none";
+
 /**
  * a rigid rod between the two sprites
  */
@@ -359,6 +362,9 @@ function createSprite(colliderType, initialX, initialY, shape){
         friction: 0.9,
         restitution: 0.1
     });
+    if(colliderType === COLLIDER_NONE){
+        body.setActive(false);
+    }
     body.setUserData({
         fillColor: getRandomColor(),
         strokeColor: "black",
@@ -376,6 +382,9 @@ function createSprite(colliderType, initialX, initialY, shape){
     };
     body.setFriction = (friction) => {
         body.getFixtureList().setFriction(friction);
+    };
+    body.setFilterGroupIndex = (index) => {
+        body.getFixtureList().setFilterGroupIndex(index);
     };
     body.setUserDataProp = (p, v) => {
         let ud = body.getUserData();
