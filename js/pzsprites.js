@@ -221,6 +221,7 @@ export function renderFrame(){
         const b = joint.getAnchorB();
         drawLine(a.x, a.y, b.x, b.y, "black");
     }
+    _ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     _bodiesToRemove.forEach(b => {
         _world.destroyBody(b);
@@ -421,7 +422,11 @@ function createSprite(colliderType, initialX, initialY, shape){
         const otherPos = sprite.getPosition ?  sprite.getPosition() : sprite;
         return Math.atan2(otherPos.x - bodyPos.x, otherPos.y - bodyPos.y);
     };
-    
+    body.vectorTo = (sprite) => {
+        const bodyPos = body.getPosition();
+        const otherPos = sprite.getPosition ?  sprite.getPosition() : sprite;
+        return {x: otherPos.x - bodyPos.x, y: otherPos.y - bodyPos.y};
+    }
     // body.createJoint = (jointDef, other) => {
     //     jointDef.bodyA = body;
     //     jointDef.bodyB = other;

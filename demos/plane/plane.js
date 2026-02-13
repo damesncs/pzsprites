@@ -19,7 +19,7 @@ import {
     createJoint,
     addCollisionListenerForSprite,
     JOINT_DISTANCE,
-     EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, createPolygonSprite, createPolygonSVGSprite, JOINT_WELD, COLLIDER_NONE, drawCircle
+     EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, createPolygonSprite, createPolygonSVGSprite, JOINT_WELD, COLLIDER_NONE, drawCircle, drawText, KEY_ARROW_UP, KEY_ARROW_DOWN
 } from "../../js/pzsprites.js";
 
 const
@@ -31,8 +31,8 @@ const
     COL_LIMIT = 2.5, // hard limit on CoL (to reduce craziness)
 
     // plane parameters
-    MAX_THRUST = 20, // i.e., engine power
-    THRUST_INCR = 0.1, // thrust to add each frame while engine on
+    MAX_THRUST = 2000, // i.e., engine power
+    THRUST_INCR = 1, // thrust to add each frame while engine on
     COD = 0.0378, // coefficient of drag - for Sopwith Camel
     FRONT_AREA = 15, // frontal area for drag
     WINGSPAN = 10,
@@ -143,6 +143,9 @@ let world;
 
     vectorRefAvgPoint = plane.getPosition();
 
+    addEventListener(EVENT_KEY_PRESSED, onKeyDown);
+    addEventListener(EVENT_KEY_RELEASED, onKeyUp);
+
     drawEachFrame(0); // begin the animation loop
 }
 
@@ -153,9 +156,33 @@ function drawEachFrame(timestamp){
     calculatePlaneForces();
     
     renderFrame();
+    drawPhysicsVars();
+
     requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
 }
 
+function drawPhysicsVars(){
+    // const planePos = plane.getPosition();
+    const text =
+    `Thrust: ${thrust.toFixed(2)}\n` +
+    // `xForce: ${xForce.toFixed(2)}\n` +
+    // `Speed: ${plane.speed.toFixed(2)}\n` +
+    // `yVel ${(plane.vel.y).toFixed(1)}\n` +
+    `Drag: ${drag.toFixed(2)}\n` +
+    `NoseA: ${noseAngle.toFixed(1)}\n` + 
+    `AoA: ${Math.trunc(aoa)}\n` +   
+    // `AoAR ${aoaRadians.toFixed(2)}\n` + 
+    `CoL: ${col.toFixed(2)}\n` +
+    // `DragArea ${Math.trunc(dragArea)}\n` +
+    `Lift: ${lift.toFixed(2)}\n` +
+    // `DX: ${Math.abs(vectorRefAvgPoint.x - plane.x).toFixed(1)}\n` +
+    // `DY: ${Math.abs(vectorRefAvgPoint.y - plane.y).toFixed(1)}\n` +
+    // `FlowA: ${flowAngle.toFixed(1)}\n` +
+    // `Alt: ${Math.trunc(height - planePos.y - (ground[0] ? ground[0].height : 0) - (plane.height / 2))}\n` +
+    `Elev: ${elevatorState} ${elevForce.toFixed(1)}\n` 
+    ;
+    drawText(0, 0, text, 16, "black");
+}
 
 function calculatePlaneForces(){
     // get flow angle relative to plane CoG - averaged over n frames
@@ -173,40 +200,41 @@ function calculatePlaneForces(){
 
     flowAngle = getOppositeAngle(plane.angleTo(vectorRefAvgPoint.x, vectorRefAvgPoint.y));
     
-    // // find drag force
-    // // TODO apply drag to vertical movement??
-    // drag = (AIR_DENSITY * (plane.speed ** 2) * COD * FRONT_AREA) / 2;
-    // xForce = thrust - drag;
+    // find drag force
+    // TODO apply drag to vertical movement??
+    drag = (AIR_DENSITY * (plane.speed ** 2) * COD * FRONT_AREA) / 2;
+    xForce = thrust - drag;
     
-    // // find angle of attack
-    // noseAngle = plane.angleTo(planeNose);
-    // aoa = (flowAngle - noseAngle);
+    // find angle of attack
+    noseAngle = plane.angleTo(planeNose);
+    const noseWingVector = planeNose.vectorTo(plane);
+    aoa = (flowAngle - noseAngle);
 
-    // // find coefficient of lift - mimic lift slope using quartic
-    // col = getCoL(aoa, "cubic2", COL_LIMIT);
+    // find coefficient of lift - mimic lift slope using quartic
+    col = getCoL(aoa, "cubic2", COL_LIMIT);
 
-    // // find lift
-    // lift = (AIR_DENSITY * ((SPEED_FACTOR * plane.speed) ** 2) * col * WING_PLAN_AREA) / 2;
+    // find lift
+    lift = (AIR_DENSITY * ((SPEED_FACTOR * plane.speed) ** 2) * col * WING_PLAN_AREA) / 2;
     
-    // // apply forces
-    // // each force must be applied at a "bearing" -
-    // // that is, the direction in which the sprite would move,
-    // // if this were the only force acting on it.
-    // // The bearing is given as an angle relative to the center of mass, 
-    // // with zero at 3 o'clock.
-    // // see https://p5play.org/learn/sprite.html?page=10
+    // apply forces
+    // each force must be applied at a "bearing" -
+    // that is, the direction in which the sprite would move,
+    // if this were the only force acting on it.
+    // The bearing is given as an angle relative to the center of mass, 
+    // with zero at 3 o'clock.
+    // see https://p5play.org/learn/sprite.html?page=10
     
-    // // apply thrust away from nose (propeller)
+    // apply thrust away from nose (propeller)
     // plane.bearing = noseAngle;
-    // plane.applyForce(thrust);
+    plane.applyForce(noseWingVector, plane.getWorldCenter());
     
-    // // apply lift perpendicularly to air flow
-    // if (Math.abs(lift) <= LIFT_LIMIT){
-    //     plane.bearing = flowAngle - 90;
-    //     plane.applyForce(lift);
-    // }
+    // apply lift perpendicularly to air flow
+    if (Math.abs(lift) <= LIFT_LIMIT){
+        // plane.bearing = flowAngle - 90;
+        // plane.applyForce(lift);
+    }
     
-    // // apply drag opposite air flow
+    // apply drag opposite air flow
     // plane.bearing = getOppositeAngle(flowAngle);
     // plane.applyForce(drag);
 }
@@ -226,7 +254,7 @@ function getCoL(aoa, liftCurve, limit){
         if(liftCurve === "quartic1"){
             c = -0.00001 * ((aoa) ** 4) + ((aoa * 0.0001) ** 3) + ((aoa * 0.002) ** 2) + (aoa * 0.15);
         }
-        if (liftCurve === "cubic1"){
+        else if (liftCurve === "cubic1"){
             // plug this equation into desmos to see it
             // y\ =-0.001x^{3}\ +\ 0.015x^{2}\ +\ 0.3x
             // cubic1
@@ -234,7 +262,7 @@ function getCoL(aoa, liftCurve, limit){
         }
         // cubic2
         // y\ =-0.0001x^{3}\ +\ 0.0001x^{2}\ +\ 0.09x
-        c = (-0.0001 * (aoa ** 3)) + (0.0001 * (aoa ** 2)) + (aoa * 0.09) + 0.5;
+        else c = (-0.0001 * (aoa ** 3)) + (0.0001 * (aoa ** 2)) + (aoa * 0.09) + 0.5;
         
     }
     if(Math.abs(c <= limit)){
@@ -243,4 +271,38 @@ function getCoL(aoa, liftCurve, limit){
     if (c >= limit) return limit;
     if (c <= -limit) return -limit;
     return 0;
+}
+
+function onKeyDown(e){
+    if(e.key === "w"){
+        if(thrust < MAX_THRUST) {
+            thrust += THRUST_INCR;
+        }
+    }
+    if (e.key === KEY_ARROW_UP){
+        // down elevator (stick forward)
+        // planeTailWheel.bearing = getOppositeAngle(planeTailWheel.angleTo(plane)) + 90;
+        // elevForce = ELEVATOR_AREA * (plane.speed ** 2) * SPEED_FACTOR;
+        // planeTailWheel.applyForce(elevForce); 
+        elevatorState = "DN";
+    }
+    if (e.key === KEY_ARROW_DOWN){
+        // up elevator (stick back)
+        // planeTailWheel.bearing = getOppositeAngle(planeTailWheel.angleTo(plane)) - 90;
+        // elevForce = ELEVATOR_AREA * (plane.speed ** 2) * SPEED_FACTOR;
+        // planeTailWheel.applyForce(elevForce);
+        elevatorState = "UP";
+    }
+}
+
+function onKeyUp(e){
+    if(e.key === "w"){
+        thrust = 0;
+    }
+    if (e.key === KEY_ARROW_UP){
+        elevatorState = "-";
+    }
+    if (e.key === KEY_ARROW_DOWN){
+        elevatorState = "-";
+    }
 }
