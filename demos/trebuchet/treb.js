@@ -22,13 +22,13 @@ const CONFIG = {
     weight: { density: 50, width: 20, height: 20 },
     camera: { scaleStart: 0.75, scaleLaunch: 0.35, followProjectile: true },
     cursorForce: 4000,
-    debug: { showHUD: true }
+    debug: { showHUD: false}
 };
 
 // ---------------- GLOBAL VARIABLES ----------------
 let world, cameraScale = CONFIG.camera.scaleStart;
 let ledge, ledge2, ledge3, ledge4, ledge5, ledge6;
-let weight, projectile, slingJoint, draggingBall, hangingBall;
+let weight, projectile, slingJoint, trebJoint, ancJoint, draggingBall, hangingBall;
 let mouseX = 0, mouseY = 0, mouseDragging = false;
 
 // ---------------- START SIMULATION ----------------
@@ -43,7 +43,7 @@ async function start() {
     createLedgesAndWeight();
     createProjectile();
     createHangingBall();
-
+    drawEachFrame();
     // Mouse events
     addEventListener("mousedown", onMouseDown);
     addEventListener("mouseup", onMouseUp);
@@ -52,7 +52,7 @@ async function start() {
     // Keyboard: release projectile
     window.addEventListener("keydown", onKeyDown);
 
-    // GUI for dev-friendly controls
+    // GUI
     setupGUI();
 
     drawEachFrame(0);
@@ -85,7 +85,7 @@ function createLedgesAndWeight() {
     ledge3.setAngle(-0.8);
 
     // Lever pivot
-    createJoint(JOINT_REVOLUTE, ledge2, ledge3, {
+  ancJoint =  createJoint(JOINT_REVOLUTE, ledge2, ledge3, {
         collideConnected: false,
         localAnchorB: { x: -ledge3.width * 0.35, y: 0 }
     });
@@ -96,7 +96,7 @@ function createLedgesAndWeight() {
     weight.setDensity(CONFIG.weight.density);
 
     // Connect weight to lever
-    createJoint(JOINT_DISTANCE, ledge3, weight, {
+    trebJoint = createJoint(JOINT_DISTANCE, ledge3, weight, {
         collideConnected: true,
         localAnchorA: { x: -ledge3.width / 2, y: 0 },
         localAnchorB: { x: 0, y: -weight.height / 2 }
@@ -221,7 +221,7 @@ function onKeyDown(e) {
     }
 }
 
-// ---------------- DEV-FRIENDLY GUI ----------------
+// ---------------- GUI ----------------
 function setupGUI() {
     const bounceSlider = document.getElementById("gui-bounce");
     const bounceValue = document.getElementById("gui-bounce-value");
@@ -254,12 +254,32 @@ function setupGUI() {
     hudCheckbox.addEventListener("change", e => { CONFIG.debug.showHUD = e.target.checked; });
     resetButton.addEventListener("click", () => {
         if (projectile) removeSprite(projectile);
+        createLever();
         createProjectile();
-        slingJoint = createJoint(JOINT_DISTANCE, ledge3, projectile, {
-            collideConnected: true,
-            localAnchorA: { x: ledge3.width / 2, y: 0 },
-            localAnchorB: { x: 0, y: 0 }
-        });
     });
 }
 
+function createLever(){
+  removeSprite(ledge3);
+  removeSprite(weight);
+  destroyJoint(ancJoint);
+  destroyJoint(trebJoint);
+     ledge3 = createRectSprite(COLLIDER_DYNAMIC, 400, 200, 200, 10);
+     ledge3.addCollisionListener(onLedgeBallCollision, "ball");
+     ledge3.setDensity(1);
+     ledge3.setFriction(0.4);
+     ledge3.setAngle(-0.8);
+    ancJoint =  createJoint(JOINT_REVOLUTE, ledge2, ledge3, {
+        collideConnected: false,
+        localAnchorB: { x: -ledge3.width * 0.35, y: 0 }
+    });
+     weight = createRectSprite(COLLIDER_DYNAMIC, 490, 220, CONFIG.weight.width, CONFIG.weight.height);
+     weight.addCollisionListener(onLedgeBallCollision, "ball");
+     weight.setDensity(CONFIG.weight.density);
+     trebJoint = createJoint(JOINT_DISTANCE, ledge3, weight, {
+        collideConnected: true,
+        localAnchorA: { x: -ledge3.width / 2, y: 0 },
+        localAnchorB: { x: 0, y: -weight.height / 2 }
+    });
+    world.setCameraScale(cameraScale);
+}
