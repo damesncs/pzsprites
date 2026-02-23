@@ -68,7 +68,9 @@ let plane,
 let cameraScale = 1;
 
 // physics variables
-let drag = 0,
+let 
+    speed = {x:0, y:0},
+    drag = {x:0, y:0},
     dragArea = 0,
     aoa = 0,
     col = 0,
@@ -77,8 +79,9 @@ let drag = 0,
     thrust = 0,
     elevForce = 0,
     elevatorState = "-",
-    flowAngle = 0,
+    flowVector = {x: 0, y: 0},
     noseAngle = 0,
+    wingToNoseVector = {x: 0, y: 0},
     vectorRefPoints = [],
     vectorRefAvgPoint = {x: 0, y: 0}
     ;
@@ -166,10 +169,11 @@ function drawPhysicsVars(){
     const text =
     `Thrust: ${thrust.toFixed(2)}\n` +
     // `xForce: ${xForce.toFixed(2)}\n` +
-    // `Speed: ${plane.speed.toFixed(2)}\n` +
+    `Speed: ${speed.x.toFixed(2)}, ${speed.y.toFixed(2)}\n` +
     // `yVel ${(plane.vel.y).toFixed(1)}\n` +
-    `Drag: ${drag.toFixed(2)}\n` +
-    `NoseA: ${noseAngle.toFixed(1)}\n` + 
+    `Drag: ${drag.x.toFixed(2)}, ${drag.y.toFixed(2)}\n` +
+    // `NoseA: ${noseAngle.toFixed(1)}\n` + 
+    `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n` + 
     `AoA: ${Math.trunc(aoa)}\n` +   
     // `AoAR ${aoaRadians.toFixed(2)}\n` + 
     `CoL: ${col.toFixed(2)}\n` +
@@ -177,7 +181,7 @@ function drawPhysicsVars(){
     `Lift: ${lift.toFixed(2)}\n` +
     // `DX: ${Math.abs(vectorRefAvgPoint.x - plane.x).toFixed(1)}\n` +
     // `DY: ${Math.abs(vectorRefAvgPoint.y - plane.y).toFixed(1)}\n` +
-    // `FlowA: ${flowAngle.toFixed(1)}\n` +
+    `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n` +
     // `Alt: ${Math.trunc(height - planePos.y - (ground[0] ? ground[0].height : 0) - (plane.height / 2))}\n` +
     `Elev: ${elevatorState} ${elevForce.toFixed(1)}\n` 
     ;
@@ -185,6 +189,9 @@ function drawPhysicsVars(){
 }
 
 function calculatePlaneForces(){
+    
+    speed = plane.getLinearVelocity(); // at CoG
+
     // get flow angle relative to plane CoG - averaged over n frames
     vectorRefPoints.push(plane.getPosition());
     if (vectorRefPoints.length === VECTOR_REF_FRAMES){
@@ -198,45 +205,50 @@ function calculatePlaneForces(){
             
     debugRefPoint.setPosition(vectorRefAvgPoint);
 
-    flowAngle = getOppositeAngle(plane.angleTo(vectorRefAvgPoint.x, vectorRefAvgPoint.y));
-    
-    // find drag force
-    // TODO apply drag to vertical movement??
-    drag = (AIR_DENSITY * (plane.speed ** 2) * COD * FRONT_AREA) / 2;
-    xForce = thrust - drag;
-    
-    // find angle of attack
+    let flowAngle = getOppositeAngle(plane.angleTo(vectorRefAvgPoint.x, vectorRefAvgPoint.y));
+    flowVector = vector(vectorRefAvgPoint, plane.getPosition());
+
     noseAngle = plane.angleTo(planeNose);
-    const noseWingVector = planeNose.vectorTo(plane);
     aoa = (flowAngle - noseAngle);
 
-    // find coefficient of lift - mimic lift slope using quartic
-    col = getCoL(aoa, "cubic2", COL_LIMIT);
 
-    // find lift
-    lift = (AIR_DENSITY * ((SPEED_FACTOR * plane.speed) ** 2) * col * WING_PLAN_AREA) / 2;
-    
-    // apply forces
-    // each force must be applied at a "bearing" -
-    // that is, the direction in which the sprite would move,
-    // if this were the only force acting on it.
-    // The bearing is given as an angle relative to the center of mass, 
-    // with zero at 3 o'clock.
-    // see https://p5play.org/learn/sprite.html?page=10
-    
-    // apply thrust away from nose (propeller)
-    // plane.bearing = noseAngle;
-    plane.applyForce(noseWingVector, plane.getWorldCenter());
-    
+    col = getCoL(aoa, "cubic2", COL_LIMIT);
+    lift = getLift(speed.x, col); // TODO speed needs to be speed along flow vector
+
     // apply lift perpendicularly to air flow
     if (Math.abs(lift) <= LIFT_LIMIT){
-        // plane.bearing = flowAngle - 90;
-        // plane.applyForce(lift);
+       
+        plane.applyForceToCenter({
+            x: flowVector.y * lift,
+            y: flowVector.x * lift
+        });
     }
+
+    // apply thrust
+    wingToNoseVector = plane.vectorTo(planeNose);
+    const thrustVector = {
+        x: wingToNoseVector.x * thrust,
+        y: wingToNoseVector.y * thrust
+    };
+    plane.applyForceToCenter(thrustVector);
     
     // apply drag opposite air flow
-    // plane.bearing = getOppositeAngle(flowAngle);
-    // plane.applyForce(drag);
+    drag.x = getDrag(speed.x);
+    drag.y = getDrag(speed.y);
+    const oppositeFlowVector = vector(plane.getPosition(), vectorRefAvgPoint);
+    const dragVector = {
+        x: oppositeFlowVector.x * drag.x,
+        y: oppositeFlowVector.y * drag.y
+    };
+    plane.applyForceToCenter(dragVector);
+}
+
+function getDrag(speed){
+    return (AIR_DENSITY * (speed ** 2) * COD * FRONT_AREA) / 2;
+}
+
+function getLift(speed, col){
+    return (AIR_DENSITY * ((SPEED_FACTOR * speed) ** 2) * col * WING_PLAN_AREA) / 2;
 }
 
 function getOppositeAngle(theta) {
@@ -248,6 +260,7 @@ function getOppositeAngle(theta) {
 }
 
 // lift slope approximation
+// aoa in degrees
 function getCoL(aoa, liftCurve, limit){
     let c = 0;
     if (Math.abs(aoa) <= 90){
@@ -271,6 +284,10 @@ function getCoL(aoa, liftCurve, limit){
     if (c >= limit) return limit;
     if (c <= -limit) return -limit;
     return 0;
+}
+
+function vector(a, b){
+    return {x: b.x - a.x, y: b.y - a.y};
 }
 
 function onKeyDown(e){
