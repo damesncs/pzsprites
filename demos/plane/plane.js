@@ -25,13 +25,15 @@ import {
 const
     // physics parameters
     AIR_DENSITY = 1.2,
-    SPEED_FACTOR = 0.3, // plane speed compensation factor (to reduce lift)
-    VECTOR_REF_FRAMES = 10, // number of frames to average for flow reference
+    SPEED_FACTOR = 1, // plane speed compensation factor (to reduce lift)
+    DRAG_FACTOR = 0.3, // drag compensation factor (to reduce drag)
+    VECTOR_REF_FRAMES = 7, // number of frames to average for flow reference
+    // TODO something's wrong with lift limit
     LIFT_LIMIT = 100, // hard limit on lift force (to reduce craziness)
     COL_LIMIT = 2.5, // hard limit on CoL (to reduce craziness)
 
     // plane parameters
-    MAX_THRUST = 2000, // i.e., engine power
+    MAX_THRUST = 35, // i.e., engine power
     THRUST_INCR = 1, // thrust to add each frame while engine on
     COD = 0.0378, // coefficient of drag - for Sopwith Camel
     FRONT_AREA = 15, // frontal area for drag
@@ -50,7 +52,7 @@ const
 
 // terrain generation parameters
 const GROUND_SEGMENTS = 200;
-const MAX_VERTICAL_CHANGE = 5;
+const MAX_VERTICAL_CHANGE = 3;
 
 // sprites
 let plane, 
@@ -75,8 +77,10 @@ let
     aoa = 0,
     col = 0,
     lift = 0,
+    liftVector = {x:0, y:0},
     xForce = 0,
     thrust = 0,
+    thrustVector = {x:0, y:0},
     elevForce = 0,
     elevatorState = "-",
     flowVector = {x: 0, y: 0},
@@ -165,68 +169,67 @@ function drawEachFrame(timestamp){
 }
 
 function drawPhysicsVars(){
-    // const planePos = plane.getPosition();
-    const text =
-    `Thrust: ${thrust.toFixed(2)}\n` +
-    // `xForce: ${xForce.toFixed(2)}\n` +
-    `Speed: ${speed.x.toFixed(2)}, ${speed.y.toFixed(2)}\n` +
-    // `yVel ${(plane.vel.y).toFixed(1)}\n` +
-    `Drag: ${drag.x.toFixed(2)}, ${drag.y.toFixed(2)}\n` +
-    // `NoseA: ${noseAngle.toFixed(1)}\n` + 
-    `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n` + 
-    `AoA: ${Math.trunc(aoa)}\n` +   
-    // `AoAR ${aoaRadians.toFixed(2)}\n` + 
-    `CoL: ${col.toFixed(2)}\n` +
-    // `DragArea ${Math.trunc(dragArea)}\n` +
-    `Lift: ${lift.toFixed(2)}\n` +
-    // `DX: ${Math.abs(vectorRefAvgPoint.x - plane.x).toFixed(1)}\n` +
-    // `DY: ${Math.abs(vectorRefAvgPoint.y - plane.y).toFixed(1)}\n` +
-    `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n` +
-    // `Alt: ${Math.trunc(height - planePos.y - (ground[0] ? ground[0].height : 0) - (plane.height / 2))}\n` +
-    `Elev: ${elevatorState} ${elevForce.toFixed(1)}\n` 
-    ;
-    drawText(0, 0, text, 16, "black");
+    const vars = [
+        `Thrust: ${thrust.toFixed(2)}\n`,
+        `ThrustV: ${thrustVector.x.toFixed(2)}, ${thrustVector.y.toFixed(2)}\n`,
+        `PlaneV: ${speed.x.toFixed(2)}, ${speed.y.toFixed(2)}\n`,
+        `Drag: ${drag.x.toFixed(2)}, ${drag.y.toFixed(2)}\n`,
+        `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n`,
+        `AoA: ${aoa.toFixed(2)}\n`,
+        `CoL: ${col.toFixed(2)}\n`,
+        `Lift: ${lift.toFixed(2)}\n`,
+        `LiftV: ${liftVector.x.toFixed(2)}, ${liftVector.y.toFixed(2)}\n`,
+        `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n`,
+        `Elev: ${elevatorState} ${elevForce.toFixed(1)}\n`
+    ];
+    const textSize = 16;
+    vars.forEach((t, i) => {
+        drawText(0, i * textSize, t, textSize, "black");
+    });
+    
 }
 
 function calculatePlaneForces(){
     
     speed = plane.getLinearVelocity(); // at CoG
-
+    // const planePos = plane.getPosition();
     // get flow angle relative to plane CoG - averaged over n frames
-    vectorRefPoints.push(plane.getPosition());
+
+    const planePos = plane.getPosition()
+    vectorRefPoints.push({ x: planePos.x, y: planePos.y });
     if (vectorRefPoints.length === VECTOR_REF_FRAMES){
         vectorRefPoints.shift();
         vectorRefAvgPoint = vectorRefPoints.reduce((acc, cur, i) => {
             return { x: acc.x + cur.x, y: acc.y + cur.y };
         });
-        vectorRefAvgPoint.x /= VECTOR_REF_FRAMES - 1;
-        vectorRefAvgPoint.y /= VECTOR_REF_FRAMES - 1;
+        vectorRefAvgPoint.x /= (VECTOR_REF_FRAMES - 1);
+        vectorRefAvgPoint.y /= (VECTOR_REF_FRAMES - 1);
     }
             
     debugRefPoint.setPosition(vectorRefAvgPoint);
 
-    let flowAngle = getOppositeAngle(plane.angleTo(vectorRefAvgPoint.x, vectorRefAvgPoint.y));
-    flowVector = vector(vectorRefAvgPoint, plane.getPosition());
-
+    let flowAngle = plane.angleTo({x: vectorRefAvgPoint.x, y: vectorRefAvgPoint.y });
+    // flowVector = vector(vectorRefAvgPoint, plane.getPosition());
+    flowVector = vector(plane.getPosition(), vectorRefAvgPoint);
     noseAngle = plane.angleTo(planeNose);
     aoa = (flowAngle - noseAngle);
-
 
     col = getCoL(aoa, "cubic2", COL_LIMIT);
     lift = getLift(speed.x, col); // TODO speed needs to be speed along flow vector
 
     // apply lift perpendicularly to air flow
     if (Math.abs(lift) <= LIFT_LIMIT){
-       
-        plane.applyForceToCenter({
+       // TODO something not quite right here
+        liftVector = {
             x: flowVector.y * lift,
             y: flowVector.x * lift
-        });
+        };
+        plane.applyForceToCenter(liftVector);
     }
 
     // apply thrust
     wingToNoseVector = plane.vectorTo(planeNose);
-    const thrustVector = {
+    thrustVector = {
         x: wingToNoseVector.x * thrust,
         y: wingToNoseVector.y * thrust
     };
@@ -244,7 +247,7 @@ function calculatePlaneForces(){
 }
 
 function getDrag(speed){
-    return (AIR_DENSITY * (speed ** 2) * COD * FRONT_AREA) / 2;
+    return (AIR_DENSITY * ((DRAG_FACTOR * speed) ** 2) * COD * FRONT_AREA) / 2;
 }
 
 function getLift(speed, col){
