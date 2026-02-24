@@ -20,7 +20,7 @@ let cameraScale = 3;
 async function start(){
     world = setupWorld("canvas", 800, 500);
     world.setWorldDimensions(10000, 500);
-    world.setGravity({ x: 0, y: 10 });
+    world.setGravity({ x: 0, y: 1 });
     world.setCameraScale(cameraScale);
 
     // truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, 8, 2);
@@ -43,6 +43,7 @@ async function start(){
     backWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x - 10, truck.getPosition().y + 6, 3);  
     backWheel.setFillColor("#00000000"); // transparent
     backWheel.setStrokeWidth(0.5);
+    backWheel.setFriction(100000000000);
     // add another fixture on the back wheel so that we can see it turning.
     backWheel.createFixture({
         shape: new PLANCK.Box(backWheel.radius, 0.1)
@@ -50,14 +51,16 @@ async function start(){
     frontWheel = createCircleSprite(COLLIDER_DYNAMIC, truck.getPosition().x + 10, truck.getPosition().y + 6, 3);
     frontWheel.setFillColor("#00000000"); // transparent
     frontWheel.setStrokeWidth(0.5);
+    frontWheel.setFriction(100000000000000000000000000000000000000000000000000000000000000000000000000);
     frontWheel.createFixture({
+    
         shape: new PLANCK.Box(frontWheel.radius, 0.1)
     });
 
     backWheelJoint = createJoint(JOINT_WHEEL, truck, backWheel, { axis: { x: 0, y: 1 }, anchor: backWheel.getPosition(), dampingRatio: 0.9, frequencyHz: 4 });
     frontWheelJoint = createJoint(JOINT_WHEEL, truck, frontWheel, { axis: { x: 0, y: 1 }, anchor: frontWheel.getPosition(), dampingRatio: 0.9, frequencyHz: 4 });
 
-    backWheelJoint.setMaxMotorTorque(1500);
+    backWheelJoint.setMaxMotorTorque(400000);
 
     let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;                                              
     let vertices = [{ x: 0, y: world.getHeight() / 2 }];
@@ -70,6 +73,7 @@ async function start(){
 
     ground = createChainSprite(COLLIDER_STATIC, vertices);
     ground.setStrokeWidth(0.5);
+    ground.setFriction(1000000);
 
     addEventListener(EVENT_KEY_PRESSED, onKeyPress);
     addEventListener(EVENT_KEY_RELEASED, onKeyRelease);
