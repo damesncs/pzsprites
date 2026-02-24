@@ -43,7 +43,7 @@ async function start() {
     createLedgesAndWeight();
     createProjectile();
     createHangingBall();
-    drawEachFrame();
+
     // Mouse events
     addEventListener("mousedown", onMouseDown);
     addEventListener("mouseup", onMouseUp);
@@ -253,9 +253,20 @@ function setupGUI() {
     followCheckbox.addEventListener("change", e => { CONFIG.camera.followProjectile = e.target.checked; });
     hudCheckbox.addEventListener("change", e => { CONFIG.debug.showHUD = e.target.checked; });
     resetButton.addEventListener("click", () => {
-        if (projectile) removeSprite(projectile);
+        if (projectile) {
+            removeSprite(projectile);
+            projectile = null;
+        }
+    
         createLever();
         createProjectile();
+    
+        // ---- RESET CAMERA ----
+        cameraScale = CONFIG.camera.scaleStart;
+        world.setCameraScale(cameraScale);
+    
+        // Center camera back to world center
+        world.setCameraPosition(400, 200 );
     });
 }
 
