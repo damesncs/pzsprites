@@ -27,9 +27,9 @@ const
     AIR_DENSITY = 1.2,
     SPEED_FACTOR = 1, // plane speed compensation factor (to reduce lift)
     DRAG_FACTOR = 0.3, // drag compensation factor (to reduce drag)
-    VECTOR_REF_FRAMES = 7, // number of frames to average for flow reference
+    VECTOR_REF_FRAMES = 10, // number of frames to average for flow vector
     // TODO something's wrong with lift limit
-    LIFT_LIMIT = 100, // hard limit on lift force (to reduce craziness)
+    LIFT_LIMIT = 500, // hard limit on lift force (to reduce craziness)
     COL_LIMIT = 2.5, // hard limit on CoL (to reduce craziness)
 
     // plane parameters
@@ -72,7 +72,7 @@ let cameraScale = 1;
 // physics variables
 let 
     speed = {x:0, y:0},
-    drag = {x:0, y:0},
+    dragVector = {x:0, y:0},
     dragArea = 0,
     aoa = 0,
     col = 0,
@@ -172,14 +172,14 @@ function drawPhysicsVars(){
     const vars = [
         `Thrust: ${thrust.toFixed(2)}\n`,
         `ThrustV: ${thrustVector.x.toFixed(2)}, ${thrustVector.y.toFixed(2)}\n`,
-        `PlaneV: ${speed.x.toFixed(2)}, ${speed.y.toFixed(2)}\n`,
-        `Drag: ${drag.x.toFixed(2)}, ${drag.y.toFixed(2)}\n`,
+        `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n`,
         `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n`,
         `AoA: ${aoa.toFixed(2)}\n`,
         `CoL: ${col.toFixed(2)}\n`,
         `Lift: ${lift.toFixed(2)}\n`,
         `LiftV: ${liftVector.x.toFixed(2)}, ${liftVector.y.toFixed(2)}\n`,
-        `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n`,
+        `PlaneV: ${speed.x.toFixed(2)}, ${speed.y.toFixed(2)}\n`,
+        `DragV: ${dragVector.x.toFixed(2)}, ${dragVector.y.toFixed(2)}\n`,
         `Elev: ${elevatorState} ${elevForce.toFixed(1)}\n`
     ];
     const textSize = 16;
@@ -190,12 +190,11 @@ function drawPhysicsVars(){
 }
 
 function calculatePlaneForces(){
-    
-    speed = plane.getLinearVelocity(); // at CoG
-    // const planePos = plane.getPosition();
-    // get flow angle relative to plane CoG - averaged over n frames
+    const planePos = plane.getPosition(); // Tricky!! this is a reference to an Vec22 object whose values will change
 
-    const planePos = plane.getPosition()
+    speed = plane.getLinearVelocity(); // at CoG
+    
+    // get flow angle relative to plane CoG - averaged over n frames
     vectorRefPoints.push({ x: planePos.x, y: planePos.y });
     if (vectorRefPoints.length === VECTOR_REF_FRAMES){
         vectorRefPoints.shift();
@@ -208,41 +207,35 @@ function calculatePlaneForces(){
             
     debugRefPoint.setPosition(vectorRefAvgPoint);
 
-    let flowAngle = plane.angleTo({x: vectorRefAvgPoint.x, y: vectorRefAvgPoint.y });
-    // flowVector = vector(vectorRefAvgPoint, plane.getPosition());
-    flowVector = vector(plane.getPosition(), vectorRefAvgPoint);
+    flowVector = getVector(planePos, vectorRefAvgPoint);
+
+    let flowAngle = plane.angleTo({ x: vectorRefAvgPoint.x, y: vectorRefAvgPoint.y });
     noseAngle = plane.angleTo(planeNose);
     aoa = (flowAngle - noseAngle);
 
     col = getCoL(aoa, "cubic2", COL_LIMIT);
-    lift = getLift(speed.x, col); // TODO speed needs to be speed along flow vector
+    lift = getLift(flowVector.x, col); // TODO speed needs to be speed along flow vector??
 
     // apply lift perpendicularly to air flow
-    if (Math.abs(lift) <= LIFT_LIMIT){
+    // if (Math.abs(lift) <= LIFT_LIMIT){
        // TODO something not quite right here
-        liftVector = {
-            x: flowVector.y * lift,
-            y: flowVector.x * lift
-        };
+        liftVector.x = flowVector.y * lift;
+        liftVector.y = -(flowVector.x * lift);
         plane.applyForceToCenter(liftVector);
-    }
+    // }
 
     // apply thrust
     wingToNoseVector = plane.vectorTo(planeNose);
-    thrustVector = {
-        x: wingToNoseVector.x * thrust,
-        y: wingToNoseVector.y * thrust
-    };
+    thrustVector.x = wingToNoseVector.x * thrust;
+    thrustVector.y = wingToNoseVector.y * thrust;
     plane.applyForceToCenter(thrustVector);
     
     // apply drag opposite air flow
-    drag.x = getDrag(speed.x);
-    drag.y = getDrag(speed.y);
-    const oppositeFlowVector = vector(plane.getPosition(), vectorRefAvgPoint);
-    const dragVector = {
-        x: oppositeFlowVector.x * drag.x,
-        y: oppositeFlowVector.y * drag.y
-    };
+    const oppositeFlowVector = getVector(vectorRefAvgPoint, planePos);
+    // not sure this makes sense
+    dragVector.x = oppositeFlowVector.x * getDrag(speed.x);
+    dragVector.y = oppositeFlowVector.y * getDrag(speed.y); 
+    
     plane.applyForceToCenter(dragVector);
 }
 
@@ -252,14 +245,6 @@ function getDrag(speed){
 
 function getLift(speed, col){
     return (AIR_DENSITY * ((SPEED_FACTOR * speed) ** 2) * col * WING_PLAN_AREA) / 2;
-}
-
-function getOppositeAngle(theta) {
-    if(theta < 0){
-        return theta + 180;
-    } else {
-        return -(180 - theta);
-    }
 }
 
 // lift slope approximation
@@ -289,8 +274,16 @@ function getCoL(aoa, liftCurve, limit){
     return 0;
 }
 
-function vector(a, b){
+function getVector(a, b){
     return {x: b.x - a.x, y: b.y - a.y};
+}
+
+function getOppositeAngle(theta) {
+    if(theta < 0){
+        return theta + 180;
+    } else {
+        return -(180 - theta);
+    }
 }
 
 function onKeyDown(e){
