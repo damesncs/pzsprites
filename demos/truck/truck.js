@@ -1,248 +1,316 @@
-import { 
-    COLLIDER_DYNAMIC, 
-    EVENT_KEY_PRESSED, 
-    EVENT_KEY_RELEASED, 
-    createCircleSprite, 
-    renderFrame, 
-    setupWorld, 
-    drawText,
-    getRandom,
-    removeSprite
+import {
+    COLLIDER_DYNAMIC,
+    COLLIDER_STATIC,
+    createCircleSprite,
+    createRectSprite,
+    renderFrame,
+    setupWorld,
+    createChainSprite,
+    removeSprite,
+    EVENT_KEY_PRESSED,
+    EVENT_KEY_RELEASED
 } from "../../js/pzsprites.js";
 
 window.onload = start;
 
-// Game variables
 let world;
-let players = []; // all player halves
+let player;
+
+// grapple
+let grappleAnchor = null;
+let grappleLength = 0;
+
+// input
+let mouseX = 0, mouseY = 0;
 let keys = {};
-let blobs = [];
-let score = 0;
 
-const PLAYER_INITIAL_RADIUS = 10;
-const FOOD_COUNT = 25000;
-const FOOD_RADIUS = 3;
-const BASE_SPEED = 1.5;
-const SPLIT_SPEED = 10; // speed of new halves
+// camera
+let camera = {
+    x: 0,
+    y: 0,
+    zoom: 1
+};
 
-let playerColor;
-let lastDirection = { x: 0, y: -1 }; // default upward
+// tuning
+const moveForce = 1400;
+const maxGrappleDistance = 600;
+const reelSpeed = 0.5;
+const cameraLerp = 0.08;
 
-function start() {
-    world = setupWorld("canvas", 800, 600);
-    world.setWorldDimensions(2000, 2000);
-    world.setGravity({ x: 0, y: 0 });
+// optional smoothing
+let smoothedSpeed = 0;
 
-    // === Player color ===
-    playerColor = getRandomColor();
+function start(){
+    world = setupWorld("canvas", 800, 500, {
+        gravity: { x: 0, y: 25 }
+    });
 
-    // === Player ===
-    const player = createPlayer(1000, 1000, PLAYER_INITIAL_RADIUS, playerColor);
-    players.push(player);
+    // player
+    player = createCircleSprite(COLLIDER_DYNAMIC, 200, 200, 15);
+    player.setFillColor("blue");
+    player.setBounciness(0.2);
+    player.setDensity(2);
 
-    // === Food ===
-    for (let i = 0; i < FOOD_COUNT; i++) {
-        const color = getRandomColor();
-        const food = createCircleSprite(
-            COLLIDER_DYNAMIC,
-            getRandom(100, 1900),
-            getRandom(100, 1900),
-            FOOD_RADIUS
+    // platforms
+    for (let i = 0; i < 30; i++){
+        createRectSprite(
+            COLLIDER_STATIC,
+            i * 250,
+            450 - Math.random() * 250,
+            180,
+            20
         );
-        food.radius = FOOD_RADIUS;
-        food.setFillColor(color);
-        food.setStrokeColor(getDarkerColor(color));
-        food.setStrokeWidth(1);
-        blobs.push(food);
     }
 
-    // === Input ===
-    addEventListener(EVENT_KEY_PRESSED, e => {
-        keys[e.key] = true;
+    createRectSprite(COLLIDER_STATIC, 3000, 480, 6000, 40);
 
-        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)){
-            lastDirection = getDirectionVector(e.key);
-        }
+    const walls = [
+        { x: 0, y: 0 },
+        { x: 6000, y: 0 },
+        { x: 6000, y: 500 },
+        { x: 0, y: 500 }
+    ];
+    createChainSprite(COLLIDER_STATIC, walls, true);
 
-        if (e.key === " ") splitPlayers();
-    });
-    addEventListener(EVENT_KEY_RELEASED, e => keys[e.key] = false);
+    // input
+    addEventListener("mousedown", onMouseDown);
+    addEventListener("mouseup", onMouseUp);
+    addEventListener("mousemove", onMouseMove);
 
-    requestAnimationFrame(drawEachFrame);
-}
-
-// Helper to create a player half
-function createPlayer(x, y, radius, color) {
-    const p = createCircleSprite(COLLIDER_DYNAMIC, x, y, radius);
-    p.radius = radius;
-    p.scale = 1;
-    p.targetScale = 1;
-    p.setFillColor(color);
-    p.setStrokeColor(getDarkerColor(color));
-    p.setStrokeWidth(1);
-    p.setUserDataProp("fixedRotation", true);
-    p.vx = 0; // velocity for split motion
-    p.vy = 0;
-    return p;
-}
-
-// Split players, shooting new halves in movement direction
-function splitPlayers() {
-    const newPlayers = [];
-    players.forEach(p => {
-        if (p.targetScale <= 0.5) return; // skip tiny halves
-        p.targetScale /= 2;
-
-        const offset = p.radius * p.scale + 5;
-        const newP = createPlayer(p.getPosition().x + offset, p.getPosition().y, p.radius, p.getFillColor());
-        newP.targetScale = p.targetScale;
-
-        newP.vx = lastDirection.x * SPLIT_SPEED;
-        newP.vy = lastDirection.y * SPLIT_SPEED;
-
-        newPlayers.push(newP);
+    addEventListener(EVENT_KEY_PRESSED, (e) => {
+        keys[e.key.toLowerCase()] = true;
     });
 
-    players.push(...newPlayers);
-}
-
-// Convert key to normalized direction vector
-function getDirectionVector(key) {
-    switch(key){
-        case "ArrowUp": return { x:0, y:-1 };
-        case "ArrowDown": return { x:0, y:1 };
-        case "ArrowLeft": return { x:-1, y:0 };
-        case "ArrowRight": return { x:1, y:0 };
-        default: return { x:0, y:-1 };
-    }
-}
-
-function drawEachFrame() {
-    if (players.length === 0) {
-        requestAnimationFrame(drawEachFrame);
-        return;
-    }
-
-    const canvasWidth = world.getWidth();
-    const canvasHeight = world.getHeight();
-    const worldWidth = world.getWidth();   // <-- replaced getWorldWidth()
-    const worldHeight = world.getHeight(); // <-- replaced getWorldHeight()
-
-    // === Move each player half ===
-    players.forEach(player => {
-        const speedFactor = Math.max(0.2, 1 / (0.5 + player.scale * 0.5)); 
-        const speed = BASE_SPEED * speedFactor;
-
-        let vx = 0, vy = 0;
-        if (keys["ArrowUp"]) vy -= speed;
-        if (keys["ArrowDown"]) vy += speed;
-        if (keys["ArrowLeft"]) vx -= speed;
-        if (keys["ArrowRight"]) vx += speed;
-
-        vx += player.vx;
-        vy += player.vy;
-
-        if (vx !== 0 || vy !== 0) {
-            const pPos = player.getPosition();
-            player.setPosition({ x: pPos.x + vx, y: pPos.y + vy });
-        }
-
-        // Split velocity decay
-        player.vx *= 0.9;
-        player.vy *= 0.9;
-
-        // Smooth growth
-        player.scale += (player.targetScale - player.scale) * 0.05;
-        player.getFixtureList().m_shape.m_radius = player.radius * player.scale;
-
-        // Eat food
-        blobs.forEach((food, idx) => {
-            const foodPos = food.getPosition();
-            const distance = Math.hypot(player.getPosition().x - foodPos.x, player.getPosition().y - foodPos.y);
-            if (distance < player.radius * player.scale + food.radius) {
-                player.targetScale += 0.05; 
-                score++;
-                removeSprite(food);
-                blobs.splice(idx, 1);
-            }
-        });
+    addEventListener(EVENT_KEY_RELEASED, (e) => {
+        keys[e.key.toLowerCase()] = false;
     });
 
-    // === Player eats smaller halves ===
-    for (let i = 0; i < players.length; i++) {
-        const a = players[i];
-        const aRadius = a.radius * a.scale;
+    loop();
+}
 
-        for (let j = players.length - 1; j >= 0; j--) {
-            if (i === j) continue;
-            const b = players[j];
-            const bRadius = b.radius * b.scale;
-
-            if (aRadius > bRadius * 1.2) { 
-                const dx = b.getPosition().x - a.getPosition().x;
-                const dy = b.getPosition().y - a.getPosition().y;
-                const dist = Math.hypot(dx, dy);
-
-                if (dist < aRadius) {
-                    a.targetScale += b.scale * 0.5; 
-                    removeSprite(b);
-                    players.splice(j, 1);
-                }
-            }
-        }
-    }
-
-    // === Calculate bounding box for camera ===
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    players.forEach(p => {
-        const x = p.getPosition().x;
-        const y = p.getPosition().y;
-        const r = p.radius * p.scale;
-        minX = Math.min(minX, x - r);
-        minY = Math.min(minY, y - r);
-        maxX = Math.max(maxX, x + r);
-        maxY = Math.max(maxY, y + r);
-    });
-
-    // Center and scale camera to fit all halves
-    let boxWidth = maxX - minX;
-    let boxHeight = maxY - minY;
-    let scaleX = canvasWidth / (boxWidth + 100);
-    let scaleY = canvasHeight / (boxHeight + 100);
-    let zoom = Math.min(scaleX, scaleY, 3);
-
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    const halfWidth = canvasWidth / (2 * zoom);
-    const halfHeight = canvasHeight / (2 * zoom);
-    const clampedX = Math.min(Math.max(centerX, halfWidth), worldWidth - halfWidth);
-    const clampedY = Math.min(Math.max(centerY, halfHeight), worldHeight - halfHeight);
-
-    world.setCameraScale(zoom);
-    world.setCameraPosition(clampedX, clampedY);
+// =========================
+// Main loop
+// =========================
+function loop(){
+    applyMovement();
+    applyReel();
+    enforceRopeConstraint();
+    updateCamera();
 
     renderFrame();
+    drawGrappleLine();
+    drawSpeed(); // ✅ NEW
 
-    // Draw score
-    world.setCameraScale(1);
-    world.setCameraPosition(canvasWidth / 2, canvasHeight / 2);
-    drawText(650, 20, `Score: ${score}`, 18, "black");
-
-    requestAnimationFrame(drawEachFrame);
+    requestAnimationFrame(loop);
 }
 
-// === Helper: random color ===
-function getRandomColor() {
-    const r = Math.floor(getRandom(0, 255));
-    const g = Math.floor(getRandom(0, 255));
-    const b = Math.floor(getRandom(0, 255));
-    return `rgb(${r},${g},${b})`;
+// =========================
+// Movement (WASD)
+// =========================
+function applyMovement(){
+    const force = { x: 0, y: 0 };
+
+    if (keys["a"]) force.x -= moveForce;
+    if (keys["d"]) force.x += moveForce;
+
+    if (keys["w"]) force.y -= moveForce * 0.5;
+    if (keys["s"]) force.y += moveForce * 0.5;
+
+    player.applyForceToCenter(force);
 }
 
-// === Helper: slightly darker shade ===
-function getDarkerColor(color) {
-    const rgb = color.match(/\d+/g).map(Number);
-    const darken = (v) => Math.max(0, Math.floor(v * 0.7));
-    return `rgb(${darken(rgb[0])},${darken(rgb[1])},${darken(rgb[2])})`;
+// =========================
+// Mouse handling
+// =========================
+function onMouseDown(e){
+    mouseX = e.offsetX;
+    mouseY = e.offsetY;
+    fireGrapple();
+}
+
+function onMouseUp(){
+    releaseGrapple();
+}
+
+function onMouseMove(e){
+    mouseX = e.offsetX;
+    mouseY = e.offsetY;
+}
+
+// =========================
+// Mouse → world
+// =========================
+function getWorldMouse(){
+    const worldX = camera.x + (mouseX / camera.zoom);
+    const worldY = camera.y + (mouseY / camera.zoom);
+
+    return { x: worldX, y: worldY };
+}
+
+// =========================
+// Grapple
+// =========================
+function fireGrapple(){
+    if (grappleAnchor) return;
+
+    const p = player.getPosition();
+    const m = getWorldMouse();
+
+    const dx = m.x - p.x;
+    const dy = m.y - p.y;
+
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > maxGrappleDistance) return;
+
+    const steps = 20;
+    let hitX = m.x;
+    let hitY = m.y;
+
+    for (let i = 1; i <= steps; i++){
+        const t = i / steps;
+        const testX = p.x + dx * t;
+        const testY = p.y + dy * t;
+
+        if (Math.hypot(testX - p.x, testY - p.y) > maxGrappleDistance){
+            break;
+        }
+
+        hitX = testX;
+        hitY = testY;
+    }
+
+    grappleAnchor = createCircleSprite(
+        COLLIDER_STATIC,
+        hitX,
+        hitY,
+        3
+    );
+
+    grappleLength = Math.hypot(hitX - p.x, hitY - p.y);
+}
+
+function releaseGrapple(){
+    if (grappleAnchor){
+        removeSprite(grappleAnchor);
+        grappleAnchor = null;
+    }
+}
+
+// =========================
+// Rope constraint
+// =========================
+function enforceRopeConstraint(){
+    if (!grappleAnchor) return;
+
+    const p = player.getPosition();
+    const a = grappleAnchor.getPosition();
+
+    let dx = p.x - a.x;
+    let dy = p.y - a.y;
+
+    let dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > grappleLength){
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        const excess = dist - grappleLength;
+
+        player.setPosition({
+            x: p.x - nx * excess,
+            y: p.y - ny * excess
+        });
+
+        const vel = player.getLinearVelocity();
+        const dot = vel.x * nx + vel.y * ny;
+
+        player.setLinearVelocity({
+            x: vel.x - dot * nx,
+            y: vel.y - dot * ny
+        });
+    }
+}
+
+// =========================
+// Reeling
+// =========================
+function applyReel(){
+    if (!grappleAnchor) return;
+
+    if (keys["q"]) {
+        grappleLength = Math.max(20, grappleLength - reelSpeed);
+
+        player.applyForceToCenter({
+            x: (grappleAnchor.getPosition().x - player.getPosition().x) * 5,
+            y: (grappleAnchor.getPosition().y - player.getPosition().y) * 5
+        });
+    }
+
+    if (keys["e"]) {
+        grappleLength += reelSpeed;
+    }
+}
+
+// =========================
+// Camera
+// =========================
+function updateCamera(){
+    const p = player.getPosition();
+
+    const targetX = p.x - 400;
+    const targetY = p.y - 250;
+
+    camera.x += (targetX - camera.x) * cameraLerp;
+    camera.y += (targetY - camera.y) * cameraLerp;
+
+    world.setCameraPosition(p.x, p.y);
+
+    if (world.setCameraScale) {
+        world.setCameraScale(camera.zoom);
+    }
+}
+
+// =========================
+// Rope rendering
+// =========================
+function drawGrappleLine(){
+    if (!grappleAnchor) return;
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const p = player.getPosition();
+    const a = grappleAnchor.getPosition();
+
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(a.x, a.y);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+// =========================
+// Speed HUD
+// =========================
+function drawSpeed(){
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const vel = player.getLinearVelocity();
+
+    // smooth value
+    smoothedSpeed += (vel.x - smoothedSpeed) * 0.1;
+
+    ctx.save();
+
+    // reset transform so UI stays fixed
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    ctx.fillStyle = "black";
+    ctx.font = "16px monospace";
+
+    ctx.fillText(`Speed (Pixels per Second): ${smoothedSpeed.toFixed(2)}`, 10, 20);
+
+    ctx.restore();
 }
