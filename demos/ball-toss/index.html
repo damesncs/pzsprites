@@ -1,9 +1,31 @@
-<html>
-  <head>
-      <title>Ball Toss</title>
-      <script src="./ball-toss.js" type="module"></script>
-  </head>
-    <body>
-        <canvas id="canvas"></canvas>
-    </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Raycasting FPS Game</title>
+
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: black;
+    }
+
+    canvas {
+        display: block;
+    }
+</style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<!-- your engine -->
+<script type="module" src="../../js/pzsprites.js"></script>
+
+<!-- game logic -->
+<script type="module" src="./ball-toss.js"></script>
+
+</body>
 </html>
