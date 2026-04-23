@@ -581,7 +581,7 @@ function renderFixture(b, f){
         // The SVG view box is drawn centered on the body position, plus any offset (for SVG documents with translation for which we want to compensate).
         drawPathArray(pos.x, pos.y, b.pathsOriginXOffset, b.pathsOriginYOffset, b.svgVBOffsetX, b.svgVBOffsetY, b.paths, b.scale, b.getAngle());
         if(ud.debug){
-            drawPolygon(getPolygonAbsoluteVertices(b, shape), "#00000000", "limegreen", 1);
+            drawPolygon(getPolygonAbsoluteVertices(b, shape), "#00000000", "limegreen", 0.1);
         }               
     } else {
         // draw simple shape
@@ -600,7 +600,7 @@ function renderFixture(b, f){
     
     if(ud.debug === true){
         // draw body center
-        drawCircle(pos.x, pos.y, 2, "limegreen", "limegreen");
+        drawCircle(pos.x, pos.y, 0.1, "limegreen", "limegreen");
     }
 }
 

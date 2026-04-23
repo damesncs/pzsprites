@@ -33,14 +33,12 @@ const
     COL_LIMIT = 2.5, // hard limit on CoL (to reduce craziness)
 
     // plane parameters
-    MAX_THRUST = 35, // i.e., engine power
-    THRUST_INCR = 1, // thrust to add each frame while engine on
-    COD = 0.0378, // coefficient of drag - for Sopwith Camel
-    FRONT_AREA = 15, // frontal area for drag
-    WINGSPAN = 10,
-    WING_LENGTH = 1, // i.e., cross-section length
-    WING_PLAN_AREA = WINGSPAN * WING_LENGTH, // wing area for lift
-    ELEVATOR_AREA = 0.05,
+    MAX_THRUST = 3, // i.e., engine power
+    THRUST_INCR = 0.5, // thrust to add each frame while engine on
+    COD = 0.027, // coefficient of drag - for Cessna 172
+    FRONT_AREA = 3, // frontal area for drag, sq meters
+    WING_PLAN_AREA = 16.5, // wing area for lift, sq meters
+    ELEVATOR_AREA = 1,
 
     // world parameters
     GROUND_HEIGHT = 30,
@@ -67,7 +65,7 @@ let plane,
     
     leftBound, rightBound, planeCameraMargin;
 
-let cameraScale = 1;
+let cameraScale = 10;
 
 // physics variables
 let 
@@ -97,7 +95,7 @@ let world;
  async function start() {
     world = setupWorld("canvas", 800, 500);
     world.setWorldDimensions(10000, 500);
-    world.setGravity({ x: 0, y: 10 });
+    world.setGravity({ x: 0, y: 9.8 });
     world.setCameraScale(cameraScale);
 
     let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;                                              
@@ -109,43 +107,45 @@ let world;
         });
     }
     ground = createChainSprite(COLLIDER_STATIC, vertices);
-    ground.setStrokeWidth(0.5);
+    ground.setStrokeWidth(0.1);
    
     const planeBoundingPolygon = [
-        { x: -60, y: 7 },
-        { x: -60, y: -4 },
-        { x: -30, y: -15 },
-        { x: -20, y: -15 },
+        { x: -6, y: 0.7 },
+        { x: -6, y: -0.4 },
+        { x: -3, y: -1.5 },
+        { x: -2, y: -1.5 },
         // { x: 0, y: -15 },
-        { x: 45, y: -25 },
-        { x: 50, y: -20 },
-        { x: 58, y: -3 },
-        { x: 50, y: 2 },
-        { x: -30, y: 10 }
+        { x: 4.5, y: -2.5 },
+        { x: 5, y: -2 },
+        { x: 5.8, y: -0.3 },
+        { x: 5, y: 0.2 },
+        { x: -3.0, y: 1 }
     ];
-    plane = await createPolygonSVGSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, "svg/plane.svg", 0.1, planeBoundingPolygon, -60, -600);
+    plane = await createPolygonSVGSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 1, "svg/plane.svg", 0.01, planeBoundingPolygon, -60, -600);
     plane.setDensity(0.1);
     let planeMass = { center: {}, I: 0, mass: 0};
     plane.getMassData(planeMass);
-    planeMass.center = { x: -30, y: 0 }; // set plane CoG
+    planeMass.center = { x: -3, y: 0 }; // set plane CoG       
     plane.setMassData(planeMass);
     plane.setDebug(true);
    
-    landingGear = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x - 33, plane.getPosition().y + 18, 4);
+    landingGear = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x - 3.3, plane.getPosition().y + 1.8, 0.4);
     landingGear.setFillColor("#00000000"); // transparent
-    landingGear.setStrokeWidth(0.5);
+    landingGear.setStrokeWidth(0.1);
     landingGear.createFixture({
         shape: new PLANCK.Box(landingGear.radius, 0.1)
     });
     gearJoint = createJoint(JOINT_WHEEL, plane, landingGear, { axis: { x: 0, y: 1 }, anchor: landingGear.getPosition(), dampingRatio: 1, frequencyHz: 10 });
     
-    planeNose = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x - 60, plane.getPosition().y, 5);
+    planeNose = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x - 6, plane.getPosition().y, 0.5);
     planeNose.setFillColor("#00000000"); // transparent
+    planeNose.setStrokeColor("#00000000");
     planeNose.setDensity(0.001);
     
-    noseJoint = createJoint(JOINT_WELD, planeNose, plane, { localAnchorB: { x: -60, y: 0 } });
+    noseJoint = createJoint(JOINT_WELD, planeNose, plane, { localAnchorB: { x: -6, y: 0 } });
 
-    debugRefPoint = createCircleSprite(COLLIDER_NONE, plane.getPosition().x, plane.getPosition().y, 4);
+    debugRefPoint = createCircleSprite(COLLIDER_NONE, plane.getPosition().x, plane.getPosition().y, 0.4);
+    debugRefPoint.setStrokeColor("#00000000");
     debugRefPoint.setFillColor("limegreen");
 
     vectorRefAvgPoint = plane.getPosition();
@@ -217,12 +217,11 @@ function calculatePlaneForces(){
     lift = getLift(flowVector.x, col); // TODO speed needs to be speed along flow vector??
 
     // apply lift perpendicularly to air flow
-    // if (Math.abs(lift) <= LIFT_LIMIT){
-       // TODO something not quite right here
-        liftVector.x = flowVector.y * lift;
-        liftVector.y = -(flowVector.x * lift);
-        plane.applyForceToCenter(liftVector);
-    // }
+
+    liftVector.x = flowVector.y * lift;
+    liftVector.y = -(flowVector.x * lift);
+    plane.applyForceToCenter(liftVector);
+  
 
     // apply thrust
     wingToNoseVector = plane.vectorTo(planeNose);
@@ -297,6 +296,7 @@ function onKeyDown(e){
         // planeTailWheel.bearing = getOppositeAngle(planeTailWheel.angleTo(plane)) + 90;
         // elevForce = ELEVATOR_AREA * (plane.speed ** 2) * SPEED_FACTOR;
         // planeTailWheel.applyForce(elevForce); 
+
         elevatorState = "DN";
     }
     if (e.key === KEY_ARROW_DOWN){
