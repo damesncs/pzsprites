@@ -190,7 +190,7 @@ function drawPhysicsVars(){
 }
 
 function calculatePlaneForces(){
-    const planePos = plane.getPosition(); // Tricky!! this is a reference to an Vec22 object whose values will change
+    const planePos = plane.getPosition(); // Tricky!! this is a reference to a Vec22 object whose values will change
 
     speed = plane.getLinearVelocity(); // at CoG
     
@@ -236,6 +236,18 @@ function calculatePlaneForces(){
     dragVector.y = oppositeFlowVector.y * getDrag(speed.y); 
     
     plane.applyForceToCenter(dragVector);
+
+    // control forces - elevator
+    elevForce = ELEVATOR_AREA * (speed ** 2) * SPEED_FACTOR;
+    if(elevatorState === 'DN'){ // i.e., stick forward
+        // apply force FROM 45 degrees down from flow direction
+        // TODO probably need a separate welded sprite for tail just like nose
+        // plane.applyForce(force, point)
+        // plane.applyForce({  }, { x: planePos.x + 5.8, y: planePos.y })
+    
+    } else if(elevatorState === 'UP'){ // i.e., stick back
+        // apply force FROM 45 degrees up from flow direction
+    }
 }
 
 function getDrag(speed){
@@ -291,19 +303,10 @@ function onKeyDown(e){
             thrust += THRUST_INCR;
         }
     }
-    if (e.key === KEY_ARROW_UP){
-        // down elevator (stick forward)
-        // planeTailWheel.bearing = getOppositeAngle(planeTailWheel.angleTo(plane)) + 90;
-        // elevForce = ELEVATOR_AREA * (plane.speed ** 2) * SPEED_FACTOR;
-        // planeTailWheel.applyForce(elevForce); 
-
+    if (e.key === KEY_ARROW_UP){ // i.e., stick forward
         elevatorState = "DN";
     }
-    if (e.key === KEY_ARROW_DOWN){
-        // up elevator (stick back)
-        // planeTailWheel.bearing = getOppositeAngle(planeTailWheel.angleTo(plane)) - 90;
-        // elevForce = ELEVATOR_AREA * (plane.speed ** 2) * SPEED_FACTOR;
-        // planeTailWheel.applyForce(elevForce);
+    if (e.key === KEY_ARROW_DOWN){ // i.e., stick back
         elevatorState = "UP";
     }
 }
