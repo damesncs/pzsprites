@@ -26,7 +26,7 @@ const
     // physics parameters
     AIR_DENSITY = 1.2,
     SPEED_FACTOR = 1, // plane speed compensation factor (to reduce lift)
-    DRAG_FACTOR = 0.3, // drag compensation factor (to reduce drag)
+    DRAG_FACTOR = 1, // drag compensation factor (to reduce drag)
     VECTOR_REF_FRAMES = 10, // number of frames to average for flow vector
     // TODO something's wrong with lift limit
     LIFT_LIMIT = 500, // hard limit on lift force (to reduce craziness)
@@ -56,6 +56,7 @@ const MAX_VERTICAL_CHANGE = 3;
 let plane, 
     landingGear, gearJoint,
     planeNose, noseJoint,
+    planeTail, tailJoint,
     
     exhaust, debugRefPoint,
 
@@ -79,7 +80,7 @@ let
     xForce = 0,
     thrust = 0,
     thrustVector = {x:0, y:0},
-    elevForce = 0,
+    elevForceVector = {x:0, y:0},
     elevatorState = "-",
     flowVector = {x: 0, y: 0},
     noseAngle = 0,
@@ -144,6 +145,13 @@ let world;
     
     noseJoint = createJoint(JOINT_WELD, planeNose, plane, { localAnchorB: { x: -6, y: 0 } });
 
+    planeTail = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x + 5.4, plane.getPosition().y - 0.5, 0.2)
+    planeTail.setFillColor("red");
+    planeTail.setStrokeColor("#00000000");
+    planeTail.setDensity(0.001);
+
+    tailJoint = createJoint(JOINT_WELD, planeTail, plane, { localAnchorB: { x: 5.4, y: -0.5 } });
+
     debugRefPoint = createCircleSprite(COLLIDER_NONE, plane.getPosition().x, plane.getPosition().y, 0.4);
     debugRefPoint.setStrokeColor("#00000000");
     debugRefPoint.setFillColor("limegreen");
@@ -180,7 +188,8 @@ function drawPhysicsVars(){
         `LiftV: ${liftVector.x.toFixed(2)}, ${liftVector.y.toFixed(2)}\n`,
         `PlaneV: ${speed.x.toFixed(2)}, ${speed.y.toFixed(2)}\n`,
         `DragV: ${dragVector.x.toFixed(2)}, ${dragVector.y.toFixed(2)}\n`,
-        `Elev: ${elevatorState} ${elevForce.toFixed(1)}\n`
+        `Elev: ${elevatorState} \n`,
+        `ElevV: ${elevForceVector.x.toFixed(2)}, ${elevForceVector.y.toFixed(2)}\n`,
     ];
     const textSize = 16;
     vars.forEach((t, i) => {
@@ -217,12 +226,10 @@ function calculatePlaneForces(){
     lift = getLift(flowVector.x, col); // TODO speed needs to be speed along flow vector??
 
     // apply lift perpendicularly to air flow
-
     liftVector.x = flowVector.y * lift;
     liftVector.y = -(flowVector.x * lift);
     plane.applyForceToCenter(liftVector);
-  
-
+    
     // apply thrust
     wingToNoseVector = plane.vectorTo(planeNose);
     thrustVector.x = wingToNoseVector.x * thrust;
@@ -232,22 +239,24 @@ function calculatePlaneForces(){
     // apply drag opposite air flow
     const oppositeFlowVector = getVector(vectorRefAvgPoint, planePos);
     // not sure this makes sense
-    dragVector.x = oppositeFlowVector.x * getDrag(speed.x);
-    dragVector.y = oppositeFlowVector.y * getDrag(speed.y); 
-    
+    const dragForce = getDrag(getLinearVelocity(oppositeFlowVector));
+    dragVector.x = oppositeFlowVector.x * dragForce;
+    dragVector.y = oppositeFlowVector.y * dragForce;
     plane.applyForceToCenter(dragVector);
 
     // control forces - elevator
-    elevForce = ELEVATOR_AREA * (speed ** 2) * SPEED_FACTOR;
+    // apply force perpendicular to flow 
+    const elevForce = ELEVATOR_AREA * (getLinearVelocity(flowVector) ** 2) * SPEED_FACTOR;
     if(elevatorState === 'DN'){ // i.e., stick forward
-        // apply force FROM 45 degrees down from flow direction
-        // TODO probably need a separate welded sprite for tail just like nose
-        // plane.applyForce(force, point)
-        // plane.applyForce({  }, { x: planePos.x + 5.8, y: planePos.y })
-    
+        
+        elevForceVector = { x: elevForce * oppositeFlowVector.y, y: elevForce * oppositeFlowVector.x};
     } else if(elevatorState === 'UP'){ // i.e., stick back
-        // apply force FROM 45 degrees up from flow direction
+        
+        elevForceVector = { x: elevForce * oppositeFlowVector.y, y: -(elevForce * oppositeFlowVector.x)};
+    } else {
+        elevForceVector = { x: 0, y: 0 };
     }
+    // planeTail.applyForceToCenter(elevForceVector);
 }
 
 function getDrag(speed){
@@ -289,12 +298,12 @@ function getVector(a, b){
     return {x: b.x - a.x, y: b.y - a.y};
 }
 
-function getOppositeAngle(theta) {
-    if(theta < 0){
-        return theta + 180;
-    } else {
-        return -(180 - theta);
-    }
+function addVectors(v1, v2){
+    return {x: v1.x + v2.x, y: v1.y + v2.y };
+}
+
+function getLinearVelocity(v){
+    return Math.abs(v.x) + Math.abs(v.y);
 }
 
 function onKeyDown(e){
@@ -322,3 +331,5 @@ function onKeyUp(e){
         elevatorState = "-";
     }
 }
+
+
