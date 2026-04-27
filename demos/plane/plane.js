@@ -28,11 +28,11 @@ const
     SPEED_FACTOR = 1, // plane speed compensation factor (to reduce lift)
     DRAG_FACTOR = 1, // drag compensation factor (to reduce drag)
     VECTOR_REF_FRAMES = 10, // number of frames to average for flow vector
-    // TODO something's wrong with lift limit
     LIFT_LIMIT = 500, // hard limit on lift force (to reduce craziness)
     COL_LIMIT = 2.5, // hard limit on CoL (to reduce craziness)
 
     // plane parameters
+    PLANE_MASS = 1000, // in kg
     MAX_THRUST = 2, // i.e., engine power
     THRUST_INCR = 0.1, // thrust to add each frame while engine on
     COD = 0.027, // coefficient of drag - for Cessna 172
@@ -40,19 +40,12 @@ const
     WING_PLAN_AREA = 16.5, // wing area for lift, sq meters
     ELEVATOR_INCR = 0.1, // elevator increment each frame key is pressed
     MAX_ELEVATOR = 1,
-    ELEVATOR_AREA = 0.9,
-
-    // world parameters
-    GROUND_HEIGHT = 30,
-    GROUND_WIDTH = 10000, // this is the world area to generate, with the plane in the center
-    MAX_ALT = 10000, // maximum altitude
-    TREES_COUNT = 50, // trees to generate
-    CLOUDS_COUNT = 50 // clouds to generate
+    ELEVATOR_AREA = 0.9
     ;
 
 // terrain generation parameters
 const GROUND_SEGMENTS = 2000;
-const MAX_VERTICAL_CHANGE = 2;
+const MAX_VERTICAL_CHANGE = 0;
 
 // sprites
 let plane, 
@@ -62,14 +55,15 @@ let plane,
     
     exhaust, debugRefPoint,
 
-    ground, display,
-     
-    obstacles, trees, clouds,
-    
-    leftBound, rightBound, planeCameraMargin;
+    ground;
 
 let maxCameraScale = 9;
 let currentCameraScale = maxCameraScale;
+
+let framecount = 0;
+let elapsedTime = 0;
+let framerate = 0;
+let lastTimestamp = 0;
 
 // physics variables
 let 
@@ -77,6 +71,7 @@ let
     linearSpeed = 0,
     dragVector = {x:0, y:0},
     aoa = 0,
+    aoaDeg = 0,
     col = 0,
     lift = 0,
     liftVector = {x:0, y:0},
@@ -111,6 +106,7 @@ let world;
         });
     }
     ground = createChainSprite(COLLIDER_STATIC, vertices);
+    ground.setBounciness(0);
     ground.setStrokeWidth(0.1);
    
     const planeBoundingPolygon = [
@@ -125,33 +121,38 @@ let world;
         { x: 5, y: 0.2 },
         { x: -3.0, y: 1 }
     ];
-    plane = await createPolygonSVGSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 1, "svg/plane.svg", 0.01, planeBoundingPolygon, -60, -600);
-    plane.setDensity(0.1);
+    plane = await createPolygonSVGSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 5, "svg/plane.svg", 0.01, planeBoundingPolygon, -60, -600);
     let planeMass = { center: {}, I: 0, mass: 0};
     plane.getMassData(planeMass);
-    planeMass.center = { x: -3, y: 0 }; // set plane CoG       
+    planeMass.center = { x: -2, y: 0 }; // set plane CoG    
+    planeMass.mass = PLANE_MASS;
     plane.setMassData(planeMass);
+    plane.setBounciness(0);
+    plane.setAngularDamping(0.1);
     plane.setDebug(true);
    
     landingGear = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x - 3.3, plane.getPosition().y + 1.8, 0.4);
     landingGear.setFillColor("#00000000"); // transparent
     landingGear.setStrokeWidth(0.1);
+    landingGear.setBounciness(0);
     landingGear.createFixture({
         shape: new PLANCK.Box(landingGear.radius, 0.1)
     });
-    gearJoint = createJoint(JOINT_WHEEL, plane, landingGear, { axis: { x: 0, y: 1 }, anchor: landingGear.getPosition(), dampingRatio: 1, frequencyHz: 10 });
+    gearJoint = createJoint(JOINT_WHEEL, plane, landingGear, { axis: { x: 0, y: 1 }, anchor: landingGear.getPosition(), dampingRatio: 0.7, frequencyHz: 4 });
+    // gearJoint = createJoint(JOINT_WELD, plane, landingGear);
     
     planeNose = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x - 6, plane.getPosition().y, 0.5);
     planeNose.setFillColor("#00000000"); // transparent
     planeNose.setStrokeColor("#00000000");
     planeNose.setDensity(0.001);
     
-    noseJoint = createJoint(JOINT_WELD, planeNose, plane, { localAnchorB: { x: -6, y: 0 } });
+    // noseJoint = createJoint(JOINT_WELD, planeNose, plane, { localAnchorB: { x: -6, y: 0 } });
 
     planeTail = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x + 5.4, plane.getPosition().y - 0.5, 0.2)
     planeTail.setFillColor("red");
     planeTail.setStrokeColor("#00000000");
     planeTail.setDensity(0.001);
+    planeTail.setBounciness(0);
 
     tailJoint = createJoint(JOINT_WELD, planeTail, plane, { localAnchorB: { x: 5.4, y: -0.5 } });
 
@@ -168,34 +169,51 @@ let world;
 }
 
 function drawEachFrame(timestamp){
-    const planePos = plane.getPosition(); // Tricky!! this is a reference to a Vec22 object whose values will change
-    pos = { x: planePos.x, y: planePos.y };
-    linearSpeed =  getLinearSpeedFromVector(plane.getLinearVelocity()); // at CoG
+    updateFrameCount(timestamp);
+    getPlanePositionAndSpeed();
+    setCameraPositionAndScale();
+    calculatePlaneForces();
+    renderFrame();
+    drawPhysicsVars();
+    requestAnimationFrame(drawEachFrame); // this asks the browser to call this function again when ready
+}
 
+function updateFrameCount(timestamp){
+    framecount++;
+    elapsedTime += timestamp - lastTimestamp;
+    framerate = framecount / (elapsedTime / 1000);
+    lastTimestamp = timestamp;
+}
+
+function getPlanePositionAndSpeed(){
+    // const planePos = plane.getPosition(); // Tricky!! this is a reference to a Vec22 object whose values will change
+    const planePos = plane.getWorldCenter();
+    pos = { x: planePos.x, y: planePos.y };
+    linearSpeed = getLinearSpeedFromVector(plane.getLinearVelocity()); // at CoG
+}
+
+function setCameraPositionAndScale(){
     world.setCameraPosition(pos.x, pos.y);
     currentCameraScale = maxCameraScale / linearSpeed ** 0.1;
     if(currentCameraScale < 1 || currentCameraScale > maxCameraScale)
         currentCameraScale = maxCameraScale;
     world.setCameraScale(currentCameraScale);
-
-    calculatePlaneForces();
-    
-    renderFrame();
-    drawPhysicsVars();
-
-    requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
 }
 
 function drawPhysicsVars(){
     const vars = [
-        `CamScale: ${currentCameraScale} \n`,
+        `Framerate: ${framerate.toFixed(2)} fps\n`,
+        `Framecount: ${framecount} \n`,
+        `Elapsed: ${(elapsedTime / 1000).toFixed(2) } sec\n`,
+        `CamScale: ${currentCameraScale.toFixed(2)} \n`,
         `Position: ${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}\n`,
         `LinearSpeed: ${linearSpeed.toFixed(2)}\n`,
         `Thrust: ${thrust.toFixed(2)}\n`,
-        `ThrustV: ${thrustVector.x.toFixed(2)}, ${thrustVector.y.toFixed(2)}\n`,
-        `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n`,
-        `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n`,
-        `AoA: ${aoa.toFixed(2)}\n`,
+        // `ThrustV: ${thrustVector.x.toFixed(2)}, ${thrustVector.y.toFixed(2)}\n`,
+        // `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n`,
+        // `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n`,
+        `Nose angle deg: ${noseAngle.toFixed(2)}\n`,
+        `AoA deg: ${aoaDeg.toFixed(2)}\n`,
         `CoL: ${col.toFixed(2)}\n`,
         `Lift: ${lift.toFixed(2)}\n`,
         `LiftV: ${liftVector.x.toFixed(2)}, ${liftVector.y.toFixed(2)}\n`,
@@ -229,8 +247,9 @@ function calculatePlaneForces(){
     let flowAngle = plane.angleTo({ x: vectorRefAvgPoint.x, y: vectorRefAvgPoint.y });
     noseAngle = plane.angleTo(planeNose);
     aoa = (flowAngle - noseAngle);
+    aoaDeg = 180 - (aoa * (180 / Math.PI));
 
-    col = getCoL(aoa, "cubic2", COL_LIMIT);
+    col = getCoL(aoaDeg, "cubic2", COL_LIMIT);
     lift = getLift(getLinearSpeedFromVector(flowVector), col);
 
     // apply lift perpendicularly to air flow
@@ -246,7 +265,6 @@ function calculatePlaneForces(){
     
     // apply drag opposite air flow
     const oppositeFlowVector = getVector(vectorRefAvgPoint, pos);
-    // not sure this makes sense
     const dragForce = getDrag(getLinearSpeedFromVector(oppositeFlowVector));
     dragVector.x = oppositeFlowVector.x * dragForce;
     dragVector.y = oppositeFlowVector.y * dragForce;
@@ -258,11 +276,11 @@ function calculatePlaneForces(){
     const elevForce = ELEVATOR_AREA * (getLinearSpeedFromVector(flowVector) ** 2) * SPEED_FACTOR * elevatorAmount;
     if(elevatorState === 'DN'){ // i.e., stick forward
         // apply force from below plane (perpendicular to flow)
-        elevForceVector = { x: elevForce * flowVector.x, y: -(elevForce * flowVector.y) };
+        elevForceVector = { x: elevForce * flowVector.y, y: -(elevForce * flowVector.x) };
         if(elevatorAmount < MAX_ELEVATOR) elevatorAmount += ELEVATOR_INCR;
     } else if(elevatorState === 'UP'){ // i.e., stick back
         // apply force from above plane (perpendicular to flow)
-        elevForceVector = { x: elevForce * flowVector.x, y: elevForce * flowVector.y };
+        elevForceVector = { x: elevForce * flowVector.y, y: elevForce * flowVector.x };
         if(elevatorAmount < MAX_ELEVATOR) elevatorAmount += ELEVATOR_INCR;
     } else {
         elevatorAmount = 0;
@@ -280,7 +298,7 @@ function getLift(speed, col){
 }
 
 // lift slope approximation
-// aoa in degrees
+// aoa in degrees, as a positive angle of wing from flow
 function getCoL(aoa, liftCurve, limit){
     let c = 0;
     if (Math.abs(aoa) <= 90){

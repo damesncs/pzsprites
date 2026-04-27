@@ -573,6 +573,7 @@ export function removeCollisionListener(callback){
 function renderFixture(b, f){
     const shapeType = f.getType();
     const pos = b.getPosition();
+    const massCenter = b.getWorldCenter();
     const ud = b.getUserData();
     const shape = f.getShape();
     if(b.paths){
@@ -599,8 +600,8 @@ function renderFixture(b, f){
     }
     
     if(ud.debug === true){
-        // draw body center
-        drawCircle(pos.x, pos.y, 0.1, "limegreen", "limegreen");
+        drawCircle(pos.x, pos.y, 0.1, "limegreen", "limegreen"); // body origin
+        drawCircle(massCenter.x, massCenter.y, 0.1, "red", "red"); // center of mass
     }
 }
 
