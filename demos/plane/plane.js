@@ -1,26 +1,15 @@
-// planck integration prototype
-
-import { angleTo, getLinearSpeedFromVector, getVector } from "../../js/pzsprites.js";
 import {
     COLLIDER_DYNAMIC,
     COLLIDER_STATIC,
     createCircleSprite,
-    createRectSprite,
     renderFrame,
-    getRandomColor,
     getRandom,
     setupWorld,
-    createEdgeSprite,
     PLANCK,
-    getSpritesByTag,
-    addCollisionListener,
-    addCollisionListenerForTag,
-    removeSprite,
     createChainSprite,
     createJoint,
-    addCollisionListenerForSprite,
-    JOINT_DISTANCE,
-     EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, createPolygonSprite, createPolygonSVGSprite, JOINT_WELD, COLLIDER_NONE, drawCircle, drawText, KEY_ARROW_UP, KEY_ARROW_DOWN
+    EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, createPolygonSVGSprite, JOINT_WELD, COLLIDER_NONE, drawText, KEY_ARROW_UP, KEY_ARROW_DOWN,
+    angleTo, getLinearSpeedFromVector, getVector
 } from "../../js/pzsprites.js";
 
 const
@@ -29,7 +18,6 @@ const
     SPEED_FACTOR = 1, // plane speed compensation factor (to reduce lift)
     DRAG_FACTOR = 1, // drag compensation factor (to reduce drag)
     VECTOR_REF_FRAMES = 10, // number of frames to average for flow vector
-    LIFT_LIMIT = 500, // hard limit on lift force (to reduce craziness)
     COL_LIMIT = 2.5, // hard limit on CoL (to reduce craziness)
 
     // plane parameters
@@ -53,11 +41,10 @@ let plane,
     landingGear, gearJoint,
     planeNose, noseJoint,
     planeTail, tailJoint,
-    
-    exhaust, debugRefPoint,
+    debugRefPoint, ground;
 
-    ground;
 
+// camera and framerate
 let maxCameraScale = 9;
 let currentCameraScale = maxCameraScale;
 
@@ -71,21 +58,21 @@ let
     cogPos = {x:0, y:0}, // position of center of gravity, not body origin
     linearSpeed = 0,
     dragVector = {x:0, y:0},
-    aoa = 0,
+    aoa = 0, // angle of attack
     aoaDeg = 0,
-    col = 0,
-    lift = 0,
+    col = 0, // coefficient of lift
+    lift = 0, // lift force
     liftVector = {x:0, y:0},
-    thrust = 0,
+    thrust = 0, // thrust force
     thrustVector = {x:0, y:0},
     elevForceVector = {x:0, y:0},
-    elevatorAmount = 0,
+    elevatorAmount = 0, // elevator force
     elevatorState = "-",
-    flowVector = {x: 0, y: 0},
+    flowVector = {x: 0, y: 0}, // airflow 
     noseAngle = 0,
-    bodyOriginToNoseVector = {x: 0, y: 0},
+    bodyOriginToNoseVector = {x: 0, y: 0}, // for determining AoA
     vectorRefPoints = [],
-    vectorRefAvgPoint = {x: 0, y: 0}
+    vectorRefAvgPoint = {x: 0, y: 0} // for determining air flow
     ;
 
 window.onload = start;
@@ -115,7 +102,6 @@ let world;
         { x: -6, y: -0.4 },
         { x: -3, y: -1.5 },
         { x: -2, y: -1.5 },
-        // { x: 0, y: -15 },
         { x: 4.5, y: -2.5 },
         { x: 5, y: -2 },
         { x: 5.8, y: -0.3 },
@@ -125,9 +111,8 @@ let world;
     plane = await createPolygonSVGSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 5, "svg/plane.svg", 0.01, planeBoundingPolygon, -60, -600);
     let planeMass = { center: {}, I: 0, mass: 0};
     plane.getMassData(planeMass);
-    // planeMass.center = { x: 0, y: 0 }; // set plane CoG    
     planeMass.center = { x: -2, y: 0 }; // set plane CoG    
-    // planeMass.mass = PLANE_MASS; // setting the mass to 900 seems to break things
+    // planeMass.mass = PLANE_MASS; // this seems to break things. Instead letting planck calculate mass (~27kg)
     plane.setMassData(planeMass);
     plane.setBounciness(0);
     plane.setAngularDamping(0.1);
@@ -141,7 +126,6 @@ let world;
         shape: new PLANCK.Box(landingGear.radius, 0.1)
     });
     gearJoint = createJoint(JOINT_WHEEL, plane, landingGear, { axis: { x: 0, y: 1 }, anchor: landingGear.getPosition(), dampingRatio: 1 , frequencyHz: 10 });
-    // gearJoint = createJoint(JOINT_WELD, plane, landingGear);
     
     planeNose = createCircleSprite(COLLIDER_DYNAMIC, plane.getPosition().x - 6, plane.getPosition().y, 0.5);
     planeNose.setFillColor("#00000000"); // transparent
@@ -188,9 +172,6 @@ function updateFrameCount(timestamp){
 }
 
 function getPlanePositionAndSpeed(){
-    // at body origin
-    // const planePos = plane.getPosition(); // Tricky!! this is a reference to a Vec22 object whose values will change
-
     const cog = plane.getWorldCenter(); // at center of gravity
     cogPos = { x: cog.x, y: cog.y };
     linearSpeed = getLinearSpeedFromVector(plane.getLinearVelocity()); 
@@ -209,18 +190,18 @@ function drawPhysicsVars(){
         `Frame rate: ${framerate.toFixed(2)} fps\n`,
         `Frame count: ${framecount} \n`,
         `Elapsed: ${(elapsedTime / 1000).toFixed(2) } sec\n`,
-        `Cam Scale: ${currentCameraScale.toFixed(2)} \n`,
-        `CoG Position: ${cogPos.x.toFixed(2)}, ${cogPos.y.toFixed(2)}\n`,
-        `LinearSpeed: ${linearSpeed.toFixed(2)}\n`,
+        `Camera scale: ${currentCameraScale.toFixed(2)} \n`,
+        `CoG position: ${cogPos.x.toFixed(2)}, ${cogPos.y.toFixed(2)}\n`,
+        `Linear speed: ${linearSpeed.toFixed(2)}\n`,
         `Thrust: ${thrust.toFixed(2)}\n`,
-        `ThrustV: ${thrustVector.x.toFixed(2)}, ${thrustVector.y.toFixed(2)}\n`,
+        // `ThrustV: ${thrustVector.x.toFixed(2)}, ${thrustVector.y.toFixed(2)}\n`,
         // `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n`,
         // `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n`,
-        `Nose angle deg: ${noseAngle.toFixed(2)}\n`,
+        // `Nose angle deg: ${noseAngle.toFixed(2)}\n`,
         `AoA deg: ${-aoaDeg.toFixed(2)}\n`,
         `CoL: ${col.toFixed(2)}\n`,
         `Lift: ${lift.toFixed(2)}\n`,
-        `LiftV: ${liftVector.x.toFixed(2)}, ${liftVector.y.toFixed(2)}\n`,
+        // `LiftV: ${liftVector.x.toFixed(2)}, ${liftVector.y.toFixed(2)}\n`,
         `DragV: ${dragVector.x.toFixed(2)}, ${dragVector.y.toFixed(2)}\n`,
         `Elev: ${elevatorState} ${elevatorAmount.toFixed(2)} \n`,
         `ElevV: ${elevForceVector.x.toFixed(2)}, ${elevForceVector.y.toFixed(2)}\n`
@@ -229,7 +210,6 @@ function drawPhysicsVars(){
     vars.forEach((t, i) => {
         drawText(0, i * textSize, t, textSize, "black");
     });
-    
 }
 
 function calculatePlaneForces(){
@@ -275,7 +255,7 @@ function calculatePlaneForces(){
     dragVector.y = oppositeFlowVector.y * dragForce;
     plane.applyForceToCenter(dragVector);
 
-    // control forces - elevator
+    // control force - elevator
 
     // apply force perpendicular to flow 
     const elevForce = ELEVATOR_AREA * (getLinearSpeedFromVector(flowVector) ** 2) * SPEED_FACTOR * elevatorAmount;
