@@ -198,7 +198,7 @@ function getPlanePositionAndSpeed(){
 
 function setCameraPositionAndScale(){
     world.setCameraPosition(cogPos.x, cogPos.y);
-    currentCameraScale = maxCameraScale / linearSpeed ** 0.0    7;
+    currentCameraScale = maxCameraScale / linearSpeed ** 0.07;
     if(currentCameraScale < 1 || currentCameraScale > maxCameraScale)
         currentCameraScale = maxCameraScale;
     world.setCameraScale(currentCameraScale);
