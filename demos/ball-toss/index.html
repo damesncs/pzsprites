@@ -1,31 +1,37 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Raycasting FPS Game</title>
+    <meta charset="UTF-8">
+    <title>Ball Toss Platformer</title>
 
+```
 <style>
     body {
         margin: 0;
         overflow: hidden;
-        background: black;
+        background: #111;
     }
 
     canvas {
         display: block;
+        margin: auto;
+        background: #222;
     }
 </style>
+```
+
 </head>
 
 <body>
 
-<canvas id="canvas"></canvas>
+```
+<!-- ✅ IMPORTANT: id MUST match setupWorld("game", ...) -->
+<canvas id="game"></canvas>
 
-<!-- your engine -->
-<script type="module" src="../../js/pzsprites.js"></script>
-
-<!-- game logic -->
+<!-- ✅ Load AFTER canvas exists -->
 <script type="module" src="./ball-toss.js"></script>
+```
 
 </body>
 </html>

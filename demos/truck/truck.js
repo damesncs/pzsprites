@@ -99,7 +99,7 @@ function loop(){
 
     renderFrame();
     drawGrappleLine();
-    drawSpeed(); // ✅ NEW
+    drawSpeed();
 
     requestAnimationFrame(loop);
 }
