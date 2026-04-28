@@ -22,8 +22,8 @@ const
 
     // plane parameters
     PLANE_MASS = 900, // in kg
-    MAX_THRUST = 15, // i.e., engine power
-    THRUST_INCR = 0.1, // thrust to add each frame while engine on
+    MAX_THRUST = 16, // i.e., engine power
+    THRUST_INCR = 0.3, // thrust to add each frame while engine on
     COD = 0.027, // coefficient of drag - for Cessna 172
     FRONT_AREA = 3, // frontal area for drag, sq meters
     WING_PLAN_AREA = 16.5, // wing area for lift, sq meters
@@ -45,7 +45,7 @@ let plane,
 
 
 // camera and framerate
-let maxCameraScale = 9;
+let maxCameraScale = 12;
 let currentCameraScale = maxCameraScale;
 
 let framecount = 0;
@@ -179,7 +179,7 @@ function getPlanePositionAndSpeed(){
 
 function setCameraPositionAndScale(){
     world.setCameraPosition(cogPos.x, cogPos.y);
-    currentCameraScale = maxCameraScale / linearSpeed ** 0.07;
+    currentCameraScale = maxCameraScale / linearSpeed ** 0.05;
     if(currentCameraScale < 1 || currentCameraScale > maxCameraScale)
         currentCameraScale = maxCameraScale;
     world.setCameraScale(currentCameraScale);
@@ -192,19 +192,19 @@ function drawPhysicsVars(){
         `Elapsed: ${(elapsedTime / 1000).toFixed(2) } sec\n`,
         `Camera scale: ${currentCameraScale.toFixed(2)} \n`,
         `CoG position: ${cogPos.x.toFixed(2)}, ${cogPos.y.toFixed(2)}\n`,
-        `Linear speed: ${linearSpeed.toFixed(2)}\n`,
+        `Speed: ${linearSpeed.toFixed(2)}\n`,
         `Thrust: ${thrust.toFixed(2)}\n`,
         // `ThrustV: ${thrustVector.x.toFixed(2)}, ${thrustVector.y.toFixed(2)}\n`,
         // `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n`,
         // `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n`,
         // `Nose angle deg: ${noseAngle.toFixed(2)}\n`,
-        `AoA deg: ${-aoaDeg.toFixed(2)}\n`,
-        `CoL: ${col.toFixed(2)}\n`,
+        // `AoA deg: ${-aoaDeg.toFixed(2)}\n`,
+        // `CoL: ${col.toFixed(2)}\n`,
         `Lift: ${lift.toFixed(2)}\n`,
         // `LiftV: ${liftVector.x.toFixed(2)}, ${liftVector.y.toFixed(2)}\n`,
         `DragV: ${dragVector.x.toFixed(2)}, ${dragVector.y.toFixed(2)}\n`,
         `Elev: ${elevatorState} ${elevatorAmount.toFixed(2)} \n`,
-        `ElevV: ${elevForceVector.x.toFixed(2)}, ${elevForceVector.y.toFixed(2)}\n`
+        // `ElevV: ${elevForceVector.x.toFixed(2)}, ${elevForceVector.y.toFixed(2)}\n`
     ];
     const textSize = 16;
     vars.forEach((t, i) => {
@@ -301,9 +301,7 @@ function getCoL(aoa, liftCurve, limit){
         else c = (-0.0001 * (aoa ** 3)) + (0.0001 * (aoa ** 2)) + (aoa * 0.09) + 0.5;
         
     }
-    if(Math.abs(c <= limit)){
-        return c;
-    } 
+    if(Math.abs(c <= limit)) return c;
     if (c >= limit) return limit;
     if (c <= -limit) return -limit;
     return 0;

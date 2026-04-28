@@ -23,18 +23,9 @@ async function start(){
     world.setGravity({ x: 0, y: 10 });
     world.setCameraScale(cameraScale);
 
-    // truck = createRectSprite(COLLIDER_DYNAMIC, world.getWidth() / 2, world.getHeight() / 2 - 50, 8, 2);
-
     const halfWidth = world.getWidth() / 2;
     const halfHeight = world.getHeight() / 2;
-    // const truckVerts = [
-    //     { x: -5, y: -5 },
-    //     { x: 5, y: -5 },
-    //     { x: 5, y: 0 },
-    //     { x: -5, y: 0 }
-    // ];
-    // truck = createPolygonSprite(COLLIDER_DYNAMIC, halfWidth, halfHeight - 50, truckVerts);
-
+   
     truck = await createPolygonSVGSprite(COLLIDER_DYNAMIC, halfWidth, halfHeight - 50, "truck.svg", 0.1);
     truck.setDensity(0.1);
     // truck.setDebug(true);
