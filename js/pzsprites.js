@@ -36,7 +36,7 @@ import {
     WeldJoint,
     WheelJoint,
     RevoluteJoint
-} from "../../js/planck.mjs";
+} from "./planck.mjs";
 // import { FrictionJoint, GearJoint, MotorJoint, PrismaticJoint, PulleyJoint, RevoluteJoint, RopeJoint, WheelJoint } from "./planck.mjs";
 
 let _canvas;
@@ -426,7 +426,7 @@ function createSprite(colliderType, initialX, initialY, shape){
         const bodyPos = body.getPosition();
         const otherPos = sprite.getPosition ?  sprite.getPosition() : sprite;
         return {x: otherPos.x - bodyPos.x, y: otherPos.y - bodyPos.y};
-    }
+    };
     // body.createJoint = (jointDef, other) => {
     //     jointDef.bodyA = body;
     //     jointDef.bodyB = other;
@@ -780,3 +780,26 @@ export function getRandomHexByte(){
 export function getRandom(min, max) {
     return Math.random() * (max - min) + min;
 }
+
+export function getVector(a, b) {
+    return { x: b.x - a.x, y: b.y - a.y };
+}
+
+export function addVectors(v1, v2) {
+    return { x: v1.x + v2.x, y: v1.y + v2.y };
+}
+
+export function getLinearSpeedFromVector(v) {
+    return Math.abs(v.x) + Math.abs(v.y);
+}
+/**
+ * return the angle in radians from p1 to p2
+ * @param {Vec2} p1 
+ * @param {Vec2} p2 
+ * @returns angle in radians
+ */
+export function angleTo(p1, p2) {
+    return Math.atan2(p2.x - p1.x, p2.y - p1.y);
+}
+
+

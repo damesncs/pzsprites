@@ -59,7 +59,7 @@ async function start(){
 
     backWheelJoint.setMaxMotorTorque(1500);
 
-    let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;                                              
+    let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;
     let vertices = [{ x: 0, y: world.getHeight() / 2 }];
     for(let i = 1; i < GROUND_SEGMENTS; i++){
         vertices.push({
