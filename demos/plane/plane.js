@@ -18,7 +18,7 @@ const
     SPEED_FACTOR = 1, // plane speed compensation factor (to reduce lift)
     DRAG_FACTOR = 1, // drag compensation factor (to reduce drag)
     VECTOR_REF_FRAMES = 10, // number of frames to average for flow vector
-    COL_LIMIT = 2.5, // hard limit on CoL (to reduce craziness)
+    COL_LIMIT = 1.75, // hard limit on CoL (to reduce craziness)
 
     // plane parameters
     PLANE_MASS = 900, // in kg
@@ -194,6 +194,7 @@ function setCameraPositionAndScale(){
 
 function drawPhysicsVars(){
     const vars = [
+        `Controls: 'w' for power, up/down arrows for pitch control. Takeoff speed ~ 39`,
         `Frame rate: ${framerate.toFixed(2)} fps\n`,
         `Frame count: ${framecount} \n`,
         `Elapsed: ${(elapsedTime / 1000).toFixed(2) } sec\n`,
@@ -205,7 +206,7 @@ function drawPhysicsVars(){
         // `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n`,
         // `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n`,
         // `Nose angle deg: ${noseAngle.toFixed(2)}\n`,
-        `AoA deg: ${aoaDeg.toFixed(2)}\n`,
+        // `AoA deg: ${aoaDeg.toFixed(2)}\n`,
         `CoL: ${col.toFixed(2)}\n`,
         `Lift: ${lift.toFixed(2)}\n`,
         // `LiftV: ${liftVector.x.toFixed(2)}, ${liftVector.y.toFixed(2)}\n`,
@@ -241,7 +242,9 @@ function calculatePlaneForces(){
     aoa = (oppositeFlowAngle - noseAngle);
     aoaDeg = aoa * (180 / Math.PI); 
 
-    col = getCoL(aoaDeg, "cubic2", COL_LIMIT);
+    col = getCoL(aoaDeg, "cubic2");
+    if(col > COL_LIMIT) col = COL_LIMIT;
+    if(col < -COL_LIMIT) col = -COL_LIMIT;
     lift = getLift(getLinearSpeedFromVector(flowVector), col);
 
     // apply lift perpendicularly to air flow
