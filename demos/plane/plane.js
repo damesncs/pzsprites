@@ -186,9 +186,9 @@ function getPlanePositionAndSpeed(){
 
 function setCameraPositionAndScale(){
     world.setCameraPosition(cogPos.x, cogPos.y);
-    // currentCameraScale = maxCameraScale / linearSpeed ** 0.05;
-    // if(currentCameraScale < 1 || currentCameraScale > maxCameraScale)
-    //     currentCameraScale = maxCameraScale;
+    currentCameraScale = maxCameraScale / linearSpeed ** 0.05;
+    if(currentCameraScale < 1 || currentCameraScale > maxCameraScale)
+        currentCameraScale = maxCameraScale;
     world.setCameraScale(currentCameraScale);
 }
 
@@ -205,8 +205,8 @@ function drawPhysicsVars(){
         // `FlowV: ${flowVector.x.toFixed(2)}, ${flowVector.y.toFixed(2)}\n`,
         // `WingToNoseV: ${wingToNoseVector.x.toFixed(2)}, ${wingToNoseVector.y.toFixed(2)}\n`,
         // `Nose angle deg: ${noseAngle.toFixed(2)}\n`,
-        // `AoA deg: ${-aoaDeg.toFixed(2)}\n`,
-        // `CoL: ${col.toFixed(2)}\n`,
+        `AoA deg: ${aoaDeg.toFixed(2)}\n`,
+        `CoL: ${col.toFixed(2)}\n`,
         `Lift: ${lift.toFixed(2)}\n`,
         // `LiftV: ${liftVector.x.toFixed(2)}, ${liftVector.y.toFixed(2)}\n`,
         `DragV: ${dragVector.x.toFixed(2)}, ${dragVector.y.toFixed(2)}\n`,
@@ -236,12 +236,12 @@ function calculatePlaneForces(){
     flowVector = getVector(cogPos, vectorRefAvgPoint);
 
     // angle from body origin to vector ref
-    let flowAngle = angleTo(cogPos, { x: vectorRefAvgPoint.x, y: vectorRefAvgPoint.y });
+    let oppositeFlowAngle = angleTo({ x: vectorRefAvgPoint.x, y: vectorRefAvgPoint.y }, cogPos);
     noseAngle = angleTo(cogPos, planeNose.getPosition());
-    aoa = (flowAngle - noseAngle);
-    aoaDeg = 180 - (aoa * (180 / Math.PI));
+    aoa = (oppositeFlowAngle - noseAngle);
+    aoaDeg = aoa * (180 / Math.PI); 
 
-    col = getCoL(-aoaDeg, "cubic2", COL_LIMIT);
+    col = getCoL(aoaDeg, "cubic2", COL_LIMIT);
     lift = getLift(getLinearSpeedFromVector(flowVector), col);
 
     // apply lift perpendicularly to air flow
@@ -298,25 +298,22 @@ function getLift(speed, col){
 // aoa in degrees, as a positive angle of wing from flow
 function getCoL(aoa, liftCurve, limit){
     let c = 0;
-    if (Math.abs(aoa) <= 90){
-        if(liftCurve === "quartic1"){
-            c = -0.00001 * ((aoa) ** 4) + ((aoa * 0.0001) ** 3) + ((aoa * 0.002) ** 2) + (aoa * 0.15);
+    // if (Math.abs(aoa) <= 90){
+        if(liftCurve === "quartic1"){       
+            c = 0.00001 * ((aoa) ** 4) + ((aoa * 0.0001) ** 3) + ((aoa * 0.002) ** 2) + (aoa * 0.15);
         }
         else if (liftCurve === "cubic1"){
             // plug this equation into desmos to see it
             // y\ =-0.001x^{3}\ +\ 0.015x^{2}\ +\ 0.3x
             // cubic1
-            c = (-0.001 * (aoa ** 3)) + (0.01 * (aoa ** 2)) + (aoa * 0.26) + 1;
+            c = (0.001 * (aoa ** 3)) + (0.01 * (aoa ** 2)) + (aoa * 0.26) + 1;
         }
         // cubic2
         // y\ =-0.0001x^{3}\ +\ 0.0001x^{2}\ +\ 0.09x
-        else c = (-0.0001 * (aoa ** 3)) + (0.0001 * (aoa ** 2)) + (aoa * 0.09) + 0.5;
+        else c = (0.0001 * (aoa ** 3)) + (0.0001 * (aoa ** 2)) + (aoa * 0.09) + 0.5;
         
-    }
-    if(Math.abs(c <= limit)) return c;
-    if (c >= limit) return limit;
-    if (c <= -limit) return -limit;
-    return 0;
+    // }
+    return c;
 }
 
 function decayExhaustSprites(){
@@ -353,12 +350,12 @@ function onKeyDown(e){
     if (e.key === KEY_ARROW_DOWN){ // i.e., stick back
         elevatorState = "UP";
     }
-    if(e.key === "q"){
-        currentCameraScale--;
-    }
-    if(e.key === "e"){
-        currentCameraScale++;
-    }
+    // if(e.key === "q"){
+    //     currentCameraScale--;
+    // }
+    // if(e.key === "e"){
+    //     currentCameraScale++;
+    // }
 }
 
 function onKeyUp(e){
