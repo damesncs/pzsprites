@@ -1,5 +1,5 @@
 /* 
-    pzsprites.js v0.1.1
+    pzsprites.js v0.2
 
     Copyright (C) 2026  David Ames
 
