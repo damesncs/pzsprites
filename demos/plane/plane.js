@@ -306,12 +306,22 @@ function getCoL(aoa, liftCurve, limit){
     if (c <= -limit) return -limit;
     return 0;
 }
+function exhustCircles(){
+    let exhust = createCircleSprite(COLLIDER_NONE, plane.getPosition().x - 6, plane.getPosition().y, 0.5);
+    exhust.setFillColor("#00000033");
+    exhust.setStrokeColor("#00000000");
+}
 
 function onKeyDown(e){
     if(e.key === "w"){
         if(thrust < MAX_THRUST) {
             thrust += THRUST_INCR;
         }
+    if(e.key === "w"){
+        
+        exhustCircles();
+    }
+    
     }
     if (e.key === KEY_ARROW_UP){ // i.e., stick forward
         elevatorState = "DN";
