@@ -9,7 +9,7 @@ import {
     createChainSprite,
     createJoint,
     EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, JOINT_WHEEL, createPolygonSVGSprite, JOINT_WELD, COLLIDER_NONE, drawText, KEY_ARROW_UP, KEY_ARROW_DOWN,
-    angleTo, getLinearSpeedFromVector, getVector
+    angleTo, getLinearSpeedFromVector, getVector, getRandomHexByte
 } from "../../js/pzsprites.js";
 
 const
@@ -37,12 +37,13 @@ const GROUND_SEGMENTS = 2000;
 const MAX_VERTICAL_CHANGE = 0;
 
 // sprites
-let plane, 
+let bkgd, plane, 
     landingGear, gearJoint,
     planeNose, noseJoint,
     planeTail, tailJoint,
     debugRefPoint, ground;
 
+let exhaustSprites = [];
 
 // camera and framerate
 let maxCameraScale = 12;
@@ -63,6 +64,7 @@ let
     col = 0, // coefficient of lift
     lift = 0, // lift force
     liftVector = {x:0, y:0},
+    thrustOn = false, // i.e., engine throttle up
     thrust = 0, // thrust force
     thrustVector = {x:0, y:0},
     elevForceVector = {x:0, y:0},
@@ -81,7 +83,7 @@ let world;
 
  async function start() {
     world = setupWorld("canvas", 800, 500);
-    world.setWorldDimensions(100000, 500);
+    world.setWorldDimensions(2500, 500);
     world.setGravity({ x: 0, y: 9.8 });
     world.setCameraScale(maxCameraScale);
 
@@ -96,6 +98,7 @@ let world;
     ground = createChainSprite(COLLIDER_STATIC, vertices);
     ground.setBounciness(0);
     ground.setStrokeWidth(0.1);
+    ground.setFillColor("brown");
    
     const planeBoundingPolygon = [
         { x: -6, y: 0.7 },
@@ -148,6 +151,8 @@ let world;
 
     vectorRefAvgPoint = plane.getPosition();
 
+    //bkgd = createPolygonSVGSprite(COLLIDER_NONE, world.getWidth() / 2, world.getHeight() / 2, "svg/bkgd.svg", 4)
+
     addEventListener(EVENT_KEY_PRESSED, onKeyDown);
     addEventListener(EVENT_KEY_RELEASED, onKeyUp);
 
@@ -159,6 +164,8 @@ function drawEachFrame(timestamp){
     getPlanePositionAndSpeed();
     setCameraPositionAndScale();
     calculatePlaneForces();
+    if(thrust > 0) generateExhaustSprites();
+    decayExhaustSprites();
     renderFrame();
     drawPhysicsVars();
     requestAnimationFrame(drawEachFrame); // this asks the browser to call this function again when ready
@@ -179,9 +186,9 @@ function getPlanePositionAndSpeed(){
 
 function setCameraPositionAndScale(){
     world.setCameraPosition(cogPos.x, cogPos.y);
-    currentCameraScale = maxCameraScale / linearSpeed ** 0.05;
-    if(currentCameraScale < 1 || currentCameraScale > maxCameraScale)
-        currentCameraScale = maxCameraScale;
+    // currentCameraScale = maxCameraScale / linearSpeed ** 0.05;
+    // if(currentCameraScale < 1 || currentCameraScale > maxCameraScale)
+    //     currentCameraScale = maxCameraScale;
     world.setCameraScale(currentCameraScale);
 }
 
@@ -255,6 +262,11 @@ function calculatePlaneForces(){
     dragVector.y = oppositeFlowVector.y * dragForce;
     plane.applyForceToCenter(dragVector);
 
+    // control force - engine
+    if(thrustOn && thrust < MAX_THRUST) thrust += THRUST_INCR;
+    else if(thrust > 0) thrust -= THRUST_INCR * 3; // thrust decay if throttle off
+    else thrust = 0;
+
     // control force - elevator
 
     // apply force perpendicular to flow 
@@ -307,11 +319,33 @@ function getCoL(aoa, liftCurve, limit){
     return 0;
 }
 
+function decayExhaustSprites(){
+    // the life is already decremented by one each time the sprite is rendered on the canvas.
+    // This just sets the fill color to match the remaining life (i.e., they get more transparent as they decay)
+    exhaustSprites.forEach((s, i) => {
+        s.setFillColor("#dddddd" + s.getLife().toString(16).padStart(2, 0));
+    });
+    exhaustSprites = exhaustSprites.filter(s => s.getLife() > 0);
+}
+
+function generateExhaustSprites(){
+    const planeNosePos = planeNose.getPosition();
+    const r = getRandom(0.1, 1);
+    const scatterX = getRandom(0, 1);
+    const scatterY = getRandom(0, 1);
+    const cloud = createCircleSprite(COLLIDER_NONE, planeNosePos.x + scatterX, planeNosePos.y + scatterY, r);
+    const density = Math.trunc(getRandom(0, 255));
+    cloud.setFillColor("#dddddd" + density.toString(16).padStart(2, 0));
+    cloud.setStrokeColor("#00000000");
+    cloud.setStrokeWidth(0);
+    
+    cloud.setLife(density);
+    exhaustSprites.push(cloud);
+}
+
 function onKeyDown(e){
     if(e.key === "w"){
-        if(thrust < MAX_THRUST) {
-            thrust += THRUST_INCR;
-        }
+        thrustOn = true;
     }
     if (e.key === KEY_ARROW_UP){ // i.e., stick forward
         elevatorState = "DN";
@@ -319,11 +353,17 @@ function onKeyDown(e){
     if (e.key === KEY_ARROW_DOWN){ // i.e., stick back
         elevatorState = "UP";
     }
+    if(e.key === "q"){
+        currentCameraScale--;
+    }
+    if(e.key === "e"){
+        currentCameraScale++;
+    }
 }
 
 function onKeyUp(e){
     if(e.key === "w"){
-        thrust = 0;
+        thrustOn = false;
     }
     if (e.key === KEY_ARROW_UP){
         elevatorState = "-";

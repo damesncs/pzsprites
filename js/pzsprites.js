@@ -214,12 +214,18 @@ export function renderFrame(){
         for (let fixture = body.getFixtureList(); fixture; fixture = fixture.getNext()) {
             renderFixture(body, fixture);
         }
+        const life = body.getLife();
+        if(life !== null && life !== undefined) { // null life means sprite never expires
+            if (life <= 0) _bodiesToRemove.push(body);
+            else body.setUserDataProp("life", life - 1);
+        }
+        
     }
 
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
         const a = joint.getAnchorA();
         const b = joint.getAnchorB();
-        drawLine(a.x, a.y, b.x, b.y, "black");
+        drawLine(a.x, a.y, b.x, b.y, "black", 0.1);
     }
     _ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -303,8 +309,8 @@ export function createPolygonSprite(colliderType, initialX, initialY, vertices){
 /**
  * Create a polygon sprite rendered as an SVG path array.
  * @param {string} colliderType one of: `dynamic`, `static`, or `kinematic`. Use the `COLLIDER_*` constants.
- * @param {number} initialX 
- * @param {number} initialY 
+ * @param {number} initialX the sprite's initial x position (body origin)
+ * @param {number} initialY the sprite's initial y position (body origin)
  * @param {Vec2[]} vertices optionally, an array of vertex objects giving points relative to body center (i.e., `initialX`, `initialY`).
  *  These form the fixture used by the physics simulation.
  *  If none is provided, a box is created by applying the scale factor to the native SVG view box.
@@ -371,8 +377,10 @@ function createSprite(colliderType, initialX, initialY, shape){
         strokeColor: "black",
         strokeWidth: 1,
         debug: false,
+        life: null,
         tags: []
     });
+   
     // Note these physics-changing functions only operate on the first fixture.
     // Can use the planck Fixture to change properties of individual fixtures 
     // within game code
@@ -392,6 +400,10 @@ function createSprite(colliderType, initialX, initialY, shape){
         ud[p] = v;
         body.setUserData(ud);
     };
+    body.setLife = (nFrames) => {
+        body.setUserDataProp("life", nFrames);  
+    };
+    body.getLife = () => body.getUserData().life;
     body.setTags = (tagArray) => body.setUserDataProp("tags", tagArray);
     body.getTags = () => body.getUserData().tags;
     body.addTag = (tag) => body.getTags().push(tag);
