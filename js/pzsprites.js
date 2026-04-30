@@ -1,5 +1,5 @@
 /* 
-    pzsprites.js v0.1.1
+    pzsprites.js v0.2
 
     Copyright (C) 2026  David Ames
 
@@ -36,7 +36,7 @@ import {
     WeldJoint,
     WheelJoint,
     RevoluteJoint
-} from "../../js/planck.mjs";
+} from "./planck.mjs";
 // import { FrictionJoint, GearJoint, MotorJoint, PrismaticJoint, PulleyJoint, RevoluteJoint, RopeJoint, WheelJoint } from "./planck.mjs";
 
 let _canvas;
@@ -74,6 +74,9 @@ export const COLLIDER_KINEMATIC = "kinematic";
 
 /** planck.js docs - A dynamic body is fully simulated. They can be moved manually by the user, but normally they move according to forces. A dynamic body can collide with all body types. A dynamic body always has finite, non-zero mass. If you try to set the mass of a dynamic body to zero, it will automatically acquire a mass of one kilogram and it won't rotate. */
 export const COLLIDER_DYNAMIC = "dynamic";
+
+/** don't collide */
+export const COLLIDER_NONE = "none";
 
 /**
  * a rigid rod between the two sprites
@@ -211,13 +214,20 @@ export function renderFrame(){
         for (let fixture = body.getFixtureList(); fixture; fixture = fixture.getNext()) {
             renderFixture(body, fixture);
         }
+        const life = body.getLife();
+        if(life !== null && life !== undefined) { // null life means sprite never expires
+            if (life <= 0) _bodiesToRemove.push(body);
+            else body.setUserDataProp("life", life - 1);
+        }
+        
     }
 
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
         const a = joint.getAnchorA();
         const b = joint.getAnchorB();
-        drawLine(a.x, a.y, b.x, b.y, "black");
+        drawLine(a.x, a.y, b.x, b.y, "black", 0.1);
     }
+    _ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     _bodiesToRemove.forEach(b => {
         _world.destroyBody(b);
@@ -299,21 +309,23 @@ export function createPolygonSprite(colliderType, initialX, initialY, vertices){
 /**
  * Create a polygon sprite rendered as an SVG path array.
  * @param {string} colliderType one of: `dynamic`, `static`, or `kinematic`. Use the `COLLIDER_*` constants.
- * @param {number} initialX 
- * @param {number} initialY 
+ * @param {number} initialX the sprite's initial x position (body origin)
+ * @param {number} initialY the sprite's initial y position (body origin)
  * @param {Vec2[]} vertices optionally, an array of vertex objects giving points relative to body center (i.e., `initialX`, `initialY`).
  *  These form the fixture used by the physics simulation.
  *  If none is provided, a box is created by applying the scale factor to the native SVG view box.
  * @param {string} svgFilePath the path to the .svg document (relative to main game file)
  * @param {number} scale scale factor to apply to SVG path array
+ * @param {number} [svgVBOffsetX=0] additional origin X offset to apply
+ * @param {number} [svgVBOffsetY=0] additional origin Y offset to apply
  * @returns {Sprite} the new sprite
  */
-export async function createPolygonSVGSprite(colliderType, initialX, initialY, svgFilePath, scale = 1, vertices = []){
+export async function createPolygonSVGSprite(colliderType, initialX, initialY, svgFilePath, scale = 1, vertices = [], svgVBOffsetX = 0, svgVBOffsetY = 0){
     const paths = await pathArrayFromSvg(svgFilePath);
     let shape;
     // the SVG viewbox is always rectangular, so this is the offset of the paths' origin from the body center
-    const pathsOriginXOffset = paths.nativeWidth * scale / 2;
-    const pathsOriginYOffset = paths.nativeHeight * scale / 2;
+    const pathsOriginXOffset = (paths.nativeWidth * scale / 2);
+    const pathsOriginYOffset = (paths.nativeHeight * scale / 2);
     if(vertices.length > 0){
         shape = new Polygon(vertices);
     }
@@ -325,6 +337,8 @@ export async function createPolygonSVGSprite(colliderType, initialX, initialY, s
     sprite.scale = scale;
     sprite.pathsOriginXOffset = pathsOriginXOffset;
     sprite.pathsOriginYOffset = pathsOriginYOffset;
+    sprite.svgVBOffsetX = svgVBOffsetX * scale;
+    sprite.svgVBOffsetY = svgVBOffsetY * scale;
     return sprite;
 }
 
@@ -355,13 +369,18 @@ function createSprite(colliderType, initialX, initialY, shape){
         friction: 0.9,
         restitution: 0.1
     });
+    if(colliderType === COLLIDER_NONE){
+        body.setActive(false);
+    }
     body.setUserData({
         fillColor: getRandomColor(),
         strokeColor: "black",
         strokeWidth: 1,
         debug: false,
+        life: null,
         tags: []
     });
+   
     // Note these physics-changing functions only operate on the first fixture.
     // Can use the planck Fixture to change properties of individual fixtures 
     // within game code
@@ -373,11 +392,18 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.setFriction = (friction) => {
         body.getFixtureList().setFriction(friction);
     };
+    body.setFilterGroupIndex = (index) => {
+        body.getFixtureList().setFilterGroupIndex(index);
+    };
     body.setUserDataProp = (p, v) => {
         let ud = body.getUserData();
         ud[p] = v;
         body.setUserData(ud);
     };
+    body.setLife = (nFrames) => {
+        body.setUserDataProp("life", nFrames);  
+    };
+    body.getLife = () => body.getUserData().life;
     body.setTags = (tagArray) => body.setUserDataProp("tags", tagArray);
     body.getTags = () => body.getUserData().tags;
     body.addTag = (tag) => body.getTags().push(tag);
@@ -402,6 +428,16 @@ function createSprite(colliderType, initialX, initialY, shape){
             }
         };
         return contains;
+    };
+    body.angleTo = (sprite) => {
+        const bodyPos = body.getPosition();
+        const otherPos = sprite.getPosition ?  sprite.getPosition() : sprite;
+        return Math.atan2(otherPos.x - bodyPos.x, otherPos.y - bodyPos.y);
+    };
+    body.vectorTo = (sprite) => {
+        const bodyPos = body.getPosition();
+        const otherPos = sprite.getPosition ?  sprite.getPosition() : sprite;
+        return {x: otherPos.x - bodyPos.x, y: otherPos.y - bodyPos.y};
     };
     // body.createJoint = (jointDef, other) => {
     //     jointDef.bodyA = body;
@@ -549,15 +585,16 @@ export function removeCollisionListener(callback){
 function renderFixture(b, f){
     const shapeType = f.getType();
     const pos = b.getPosition();
+    const massCenter = b.getWorldCenter();
     const ud = b.getUserData();
     const shape = f.getShape();
     if(b.paths){
         // draw SVG path array
         // NOTE: the SVG document will always be rectangular, but the sprite can be a circle or polygon.
-        // The SVG view box is drawn centered on the body position.
-        drawPathArray(pos.x, pos.y, b.pathsOriginXOffset, b.pathsOriginYOffset, b.paths, b.scale, b.getAngle());
+        // The SVG view box is drawn centered on the body position, plus any offset (for SVG documents with translation for which we want to compensate).
+        drawPathArray(pos.x, pos.y, b.pathsOriginXOffset, b.pathsOriginYOffset, b.svgVBOffsetX, b.svgVBOffsetY, b.paths, b.scale, b.getAngle());
         if(ud.debug){
-            drawPolygon(getPolygonAbsoluteVertices(b, shape), "#00000000", "limegreen", 1);
+            drawPolygon(getPolygonAbsoluteVertices(b, shape), "#00000000", "limegreen", 0.1);
         }               
     } else {
         // draw simple shape
@@ -575,8 +612,8 @@ function renderFixture(b, f){
     }
     
     if(ud.debug === true){
-        // draw body center
-        drawCircle(pos.x, pos.y, 2, "limegreen", "limegreen");
+        drawCircle(pos.x, pos.y, 0.1, "limegreen", "limegreen"); // body origin
+        drawCircle(massCenter.x, massCenter.y, 0.1, "red", "red"); // center of mass
     }
 }
 
@@ -610,9 +647,18 @@ export async function pathArrayFromSvg(svgDoc){
         for(const attr of pathEl.attributes) {
             p[attr.name] = attr.value;
         }
+        if(p["style"]){
+            const splitStyles = p.style.split(";");
+            splitStyles.forEach(s => {
+                const split = s.indexOf(":");
+                const propKey = s.substring(0, split);
+                const propVal = s.substring(split + 1);
+                p[propKey] = propVal;
+            });
+        }
         paths.push(p);
     });
-    const vb = svgTempCtr.firstChild.getAttribute("viewBox").split(" ");
+    const vb = svgTempCtr.querySelector("svg").getAttribute("viewBox").split(" ");
     paths.nativeWidth = vb[2];
     paths.nativeHeight = vb[3];
     document.body.removeChild(svgTempCtr);
@@ -690,11 +736,12 @@ export function drawCircle (x, y, radius, fillColor, strokeColor = "black", stro
  * @param {number} scale scale factor
  * @param {number} angle rotation in radians (around the center)
  */
-function drawPathArray(centerX, centerY, originOffsetX, originOffsetY, paths, scale, angle){
+function drawPathArray(centerX, centerY, originOffsetX, originOffsetY, vbOffsetX, vbOffsetY, paths, scale, angle){
     _ctx.save();
     _ctx.translate(centerX, centerY);
     _ctx.rotate(angle);
     _ctx.translate(-originOffsetX, -originOffsetY);
+    _ctx.translate(-vbOffsetX, -vbOffsetY);
     _ctx.scale(scale, scale);
     paths.forEach(p => {
         _ctx.lineCap = p["stroke-linecap"] ? p["stroke-linecap"] : _ctx.lineCap;
@@ -745,6 +792,31 @@ export function getRandomHexByte(){
 export function getRandom(min, max) {
     return Math.random() * (max - min) + min;
 }
+
 export function destroyJoint(joint) {
     _world.destroyJoint(joint);
-  }
+}
+
+export function getVector(a, b) {
+    return { x: b.x - a.x, y: b.y - a.y };
+}
+
+export function addVectors(v1, v2) {
+    return { x: v1.x + v2.x, y: v1.y + v2.y };
+}
+
+export function getLinearSpeedFromVector(v) {
+    return Math.abs(v.x) + Math.abs(v.y);
+}
+
+/**
+ * return the angle in radians from p1 to p2
+ * @param {Vec2} p1 
+ * @param {Vec2} p2 
+ * @returns angle in radians
+ */
+export function angleTo(p1, p2) {
+    return Math.atan2(p2.x - p1.x, p2.y - p1.y);
+}
+
+
