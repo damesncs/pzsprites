@@ -793,6 +793,10 @@ export function getRandom(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+export function destroyJoint(joint) {
+    _world.destroyJoint(joint);
+}
+
 export function getVector(a, b) {
     return { x: b.x - a.x, y: b.y - a.y };
 }
@@ -804,6 +808,7 @@ export function addVectors(v1, v2) {
 export function getLinearSpeedFromVector(v) {
     return Math.abs(v.x) + Math.abs(v.y);
 }
+
 /**
  * return the angle in radians from p1 to p2
  * @param {Vec2} p1 

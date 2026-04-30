@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trebuchet Simulator</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+        #canvas {
+            display: block;
+            background: #f0f0f0;
+        }
+        #gui-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 14px;
+        }
+        #gui-container label {
+            display: block;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas -->
+    <canvas id="canvas" width="800" height="500"></canvas>
+
+    <!-- GUI Overlay -->
+    <div id="gui-container">
+        <label>Projectile Bounciness: <span id="gui-bounce-value">0.1</span></label>
+        <input type="range" id="gui-bounce" min="0" max="2" step="0.01">
+
+        <label>Weight Density: <span id="gui-density-value">50</span></label>
+        <input type="range" id="gui-density" min="1" max="200" step="1">
+
+        <label><input type="checkbox" id="gui-follow" checked> Follow Projectile</label>
+        <label><input type="checkbox" id="gui-hud" checked> Show HUD</label>
+
+        <button id="gui-reset">Reset Projectile</button>
+    </div>
+
+    <!-- Main Script -->
+    <script type="module" src="treb.js"></script>
+</body>
+</html>
