@@ -195,7 +195,7 @@ export function setupWorld(canvasId, width, height, worldDef, worldWidth, worldH
     _world.setBackgroundColor = (color) => {
         _world.bkgdColor = color;
     };
-    _world.setBackgroundColor("#ffffff");
+    _world.setBackgroundColor("white");
     // set camera to center by default
     _world.setCameraPosition(_worldWidth / 2, _worldHeight / 2);
 
@@ -415,7 +415,7 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.removeTag = (tag) => body.setTags(body.getTags().filter(t => t !== tag));
     body.hasTag = (tag) => body.getTags().indexOf(tag) != -1;
     body.getFillColor = () => body.getUserData().fillColor;
-    body.setFillColor = (color) => body.setUserDataProp("fillColor", color);
+    body.setFillColor = (color) => body.setUserDataProp("fillColor", color === "none" ? "#00000000" : color);
     body.getStrokeColor = () => body.getUserData().strokeColor;
     body.setStrokeColor = (color) => body.setUserDataProp("strokeColor", color);
     body.setStrokeWidth = (width) => body.setUserDataProp("strokeWidth", width);
