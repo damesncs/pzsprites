@@ -807,8 +807,24 @@ export function destroyJoint(joint) {
     _world.destroyJoint(joint);
 }
 
+/**
+ * Get vector from point A to point B
+ * @param {Vec2} a 
+ * @param {Vec2} b 
+ * @returns  vector from A to B
+ */
 export function getVector(a, b) {
     return { x: b.x - a.x, y: b.y - a.y };
+}
+
+/**
+ * Vector from sprite A to sprite B
+ * @param {Vec2} a 
+ * @param {Vec2} b 
+ * @returns  vector from sprite A to B
+ */
+export function getVectorForSprites(a, b){
+    return getVector(a.getPosition(), b.getPosition());
 }
 
 export function addVectors(v1, v2) {

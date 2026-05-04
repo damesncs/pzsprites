@@ -1,4 +1,4 @@
-import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, createChainSprite, getRandom, renderFrame, setupWorld, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, createPolygonSVGSprite, KEY_ARROW_UP, createCircleSprite, COLLIDER_NONE, createJoint, JOINT_WELD } from "../../js/pzsprites.js";
+import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, createChainSprite, getRandom, renderFrame, setupWorld, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, createPolygonSVGSprite, KEY_ARROW_UP, createCircleSprite, COLLIDER_NONE, createJoint, JOINT_WELD, getVector, getVectorForSprites } from "../../js/pzsprites.js";
 
 window.onload = start;
 
@@ -9,6 +9,7 @@ const MAX_VERTICAL_CHANGE = 2;
 // lander parameters
 const START_FUEL = 1000;
 const INITIAL_ALTITUDE = 400;
+const MAIN_THRUSTER_FORCE = 150;
 
 const EXHAUST_COLOR = "#f5b207";
 const MAX_EXHAUST_LIFE = 25; // frames
@@ -95,9 +96,9 @@ function updateThrusters(){
         const pos = mainThruster.getPosition();
         generateExhaustSprites(pos.x, pos.y, 3, 0, 1000);
         // TODO apply force
-        // lander.applyForce({},{})
-    }
-    if(leftThrusterOn){
+        const v = getVectorForSprites(mainThruster, lander);
+        lander.applyForce({ x: v.x * MAIN_THRUSTER_FORCE, y: v.y * MAIN_THRUSTER_FORCE }, pos);
+    }    if(leftThrusterOn){
         const pos = leftThruster.getPosition();
         generateExhaustSprites(pos.x, pos.y, 1, -100, 0);
         // TODO apply force
