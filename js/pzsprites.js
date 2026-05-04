@@ -192,6 +192,10 @@ export function setupWorld(canvasId, width, height, worldDef, worldWidth, worldH
         _camera.x = x;
         _camera.y = y;
     };
+    _world.setBackgroundColor = (color) => {
+        _world.bkgdColor = color;
+    };
+    _world.setBackgroundColor("#ffffff");
     // set camera to center by default
     _world.setCameraPosition(_worldWidth / 2, _worldHeight / 2);
 
@@ -204,6 +208,7 @@ export function renderFrame(){
 
     _ctx.setTransform(1, 0, 0, 1, 0, 0);
     clearCanvas();
+    drawWorldBackground();
     drawBorder();
     _ctx.scale(_camera.scale, _camera.scale);
     const viewableHeight = _canvas.height / _camera.scale;
@@ -598,7 +603,7 @@ function renderFixture(b, f){
         }               
     } else {
         // draw simple shape
-        if(shapeType === SHAPE_TYPE_POLYGON){
+        if(shapeType === SHAPE_TYPE_POLYGON || (shapeType === SHAPE_TYPE_CHAIN && shape.m_isLoop === true)){
             drawPolygon(getPolygonAbsoluteVertices(b, shape), ud.fillColor, ud.strokeColor, ud.strokeWidth);
         } else if(shapeType === SHAPE_TYPE_CIRCLE){
             drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor, ud.strokeWidth);
@@ -671,6 +676,7 @@ function drawChain(chain, strokeColor, strokeWidth){
         chain.getChildEdge(edge, i);
         drawEdge(edge, strokeColor, strokeWidth);
     }
+    
 }
 
 function drawEdge(edge, strokeColor, strokeWidth){
@@ -705,6 +711,10 @@ export function drawBorder( strokeColor = "black", strokeWidth = 1){
     _ctx.lineWidth = strokeWidth;
     _ctx.strokeStyle = strokeColor;
     _ctx.strokeRect(0, 0, _canvas.width, _canvas.height);
+}
+
+export function drawWorldBackground(){
+    drawRect(0, 0, _canvas.width, _canvas.height, _world.bkgdColor);
 }
 
 export function drawRect (x, y, width, height, fillColor, strokeColor = "black", strokeWidth = 1) {
