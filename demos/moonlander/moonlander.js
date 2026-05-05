@@ -10,6 +10,7 @@ const MAX_VERTICAL_CHANGE = 2;
 const START_FUEL = 1000;
 const INITIAL_ALTITUDE = 400;
 const MAIN_THRUSTER_FORCE = 150;
+const SIDE_THRUSTER_FORCE = 25;
 
 const EXHAUST_COLOR = "#f5b207";
 const MAX_EXHAUST_LIFE = 25; // frames
@@ -19,7 +20,8 @@ let lander;
 let fuel = START_FUEL;
 let mainThruster,
     leftThruster,
-    rightThruster
+    rightThruster,
+    centerVectorRefPoint
     ;
 
 let mainThrusterOn = false,
@@ -47,16 +49,20 @@ async function start(){
     const landerPos = lander.getPosition();
     mainThruster = createCircleSprite(COLLIDER_DYNAMIC, landerPos.x, landerPos.y - 17, 0.1);
     mainThruster.setFilterGroupIndex(LANDER_FILTER_GROUP);
-    mainThruster.setDebug(true);
+    
     leftThruster = createCircleSprite(COLLIDER_DYNAMIC, landerPos.x - 3, landerPos.y + 13, 0.1);
     leftThruster.setFilterGroupIndex(LANDER_FILTER_GROUP);
-    leftThruster.setDebug(true);
+    
     rightThruster = createCircleSprite(COLLIDER_DYNAMIC, landerPos.x + 3, landerPos.y + 13, 0.1);
     rightThruster.setFilterGroupIndex(LANDER_FILTER_GROUP);
-    rightThruster.setDebug(true);
+
+    centerVectorRefPoint = createCircleSprite(COLLIDER_DYNAMIC, landerPos.x, landerPos.y + 13, 0.1);
+    centerVectorRefPoint.setFilterGroupIndex(LANDER_FILTER_GROUP);
+    
     createJoint(JOINT_WELD, lander, mainThruster, { localAnchorB: { x: 0, y: -17 } });
     createJoint(JOINT_WELD, lander, leftThruster, { localAnchorB: { x: -3, y: 13 } });
     createJoint(JOINT_WELD, lander, rightThruster, { localAnchorB: { x: 3, y: 13 } });
+    createJoint(JOINT_WELD, lander, centerVectorRefPoint, { localAnchorB: { x: 0, y: 13 } });
    
     // terrain
     let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;
@@ -94,19 +100,21 @@ function drawEachFrame(timestamp){
 function updateThrusters(){
     if(mainThrusterOn){
         const pos = mainThruster.getPosition();
-        generateExhaustSprites(pos.x, pos.y, 3, 0, 1000);
-        // TODO apply force
         const v = getVectorForSprites(mainThruster, lander);
         lander.applyForce({ x: v.x * MAIN_THRUSTER_FORCE, y: v.y * MAIN_THRUSTER_FORCE }, pos);
-    }    if(leftThrusterOn){
+        generateExhaustSprites(pos.x, pos.y, 3, v.x * -1000, v.y * -1000);
+    }    
+    if(leftThrusterOn){
         const pos = leftThruster.getPosition();
-        generateExhaustSprites(pos.x, pos.y, 1, -100, 0);
-        // TODO apply force
+        const v = getVectorForSprites(leftThruster, centerVectorRefPoint);
+        generateExhaustSprites(pos.x, pos.y, 1, v.x * 1000, v.y * 1000);
+        lander.applyForce({ x: v.x * -SIDE_THRUSTER_FORCE, y: v.y * -SIDE_THRUSTER_FORCE }, pos);
     }
     if(rightThrusterOn){
         const pos = leftThruster.getPosition();
-        generateExhaustSprites(pos.x, pos.y, 1, 100, 0);
-        // TODO apply force
+        const v = getVectorForSprites(rightThruster, centerVectorRefPoint);
+        generateExhaustSprites(pos.x, pos.y, 1, v.x * 1000, v.y * 1000);
+        lander.applyForce({ x: v.x * -SIDE_THRUSTER_FORCE, y: v.y * -SIDE_THRUSTER_FORCE }, pos);
     }
     decayExhaustSprites();
 }
