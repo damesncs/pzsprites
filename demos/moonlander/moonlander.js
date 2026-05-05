@@ -3,8 +3,10 @@ import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASE
 window.onload = start;
 
 // terrain generation parameters
-const GROUND_SEGMENTS = 200;
-const MAX_VERTICAL_CHANGE = 2;
+const WORLD_WIDTH = 10000;
+const WORLD_HEIGHT = 1000;
+const GROUND_SEGMENTS = WORLD_WIDTH / 7; 
+const MAX_VERTICAL_CHANGE = 4;
 
 // lander parameters
 const START_FUEL = 1000;
@@ -37,8 +39,8 @@ let world;
 let cameraScale = 1;
 
 async function start(){
-    world = setupWorld("canvas", 800, 500);
-    world.setWorldDimensions(1000, 1000);
+    world = setupWorld("canvas", 1000, 600); // i.e., viewport
+    world.setWorldDimensions(WORLD_WIDTH, WORLD_HEIGHT);
     world.setGravity({ x: 0, y: 3 }); // approx 1/3 of earth
     world.setCameraScale(cameraScale);
     world.setBackgroundColor("black");
@@ -65,19 +67,7 @@ async function start(){
     createJoint(JOINT_WELD, lander, centerVectorRefPoint, { localAnchorA: { x: 0, y: -13 } });
    
     // terrain
-    let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;
-    let vertices = [{ x: 0, y: world.getHeight() - world.getHeight() / 4 }];
-    for(let i = 1; i < GROUND_SEGMENTS; i++){
-        vertices.push({
-            x: eachSegmentLength * i,
-            y: vertices[i - 1].y + getRandom(-MAX_VERTICAL_CHANGE, MAX_VERTICAL_CHANGE)
-        });
-    }
-    vertices.push({ x: world.getWidth(), y: world.getHeight() - world.getHeight() / 4 });
-    vertices.push({ x: world.getWidth(), y: world.getHeight() }); // bottom right corner
-    vertices.push({ x: 0, y: world.getHeight() }); // bottom left corner
-    
-    ground = createChainSprite(COLLIDER_STATIC, vertices, true); // setting loop = true will connect first and last vertices
+    ground = createChainSprite(COLLIDER_STATIC, getTerrainVertices(), true); // setting loop = true will connect first and last vertices
     ground.setStrokeWidth(0.5);
     ground.setStrokeColor("gray");
     ground.setFillColor("gray");
@@ -95,6 +85,21 @@ function drawEachFrame(timestamp){
     updateThrusters();
     renderFrame();
     requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
+}
+
+function getTerrainVertices(){
+    let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;
+    let vertices = [{ x: 0, y: world.getHeight() - world.getHeight() / 4 }];
+    for(let i = 1; i < GROUND_SEGMENTS; i++){
+        vertices.push({
+            x: eachSegmentLength * i,
+            y: vertices[i - 1].y + getRandom(-MAX_VERTICAL_CHANGE, MAX_VERTICAL_CHANGE)
+        });
+    }
+    vertices.push({ x: world.getWidth(), y: world.getHeight() - world.getHeight() / 4 });
+    vertices.push({ x: world.getWidth(), y: world.getHeight() }); // bottom right corner
+    vertices.push({ x: 0, y: world.getHeight() }); // bottom left corner
+    return vertices;
 }
 
 function updateThrusters(){
