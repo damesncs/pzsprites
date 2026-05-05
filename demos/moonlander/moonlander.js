@@ -59,10 +59,10 @@ async function start(){
     centerVectorRefPoint = createCircleSprite(COLLIDER_DYNAMIC, landerPos.x, landerPos.y + 13, 0.1);
     centerVectorRefPoint.setFilterGroupIndex(LANDER_FILTER_GROUP);
     
-    createJoint(JOINT_WELD, lander, mainThruster, { localAnchorB: { x: 0, y: -17 } });
-    createJoint(JOINT_WELD, lander, leftThruster, { localAnchorB: { x: -3, y: 13 } });
-    createJoint(JOINT_WELD, lander, rightThruster, { localAnchorB: { x: 3, y: 13 } });
-    createJoint(JOINT_WELD, lander, centerVectorRefPoint, { localAnchorB: { x: 0, y: 13 } });
+    createJoint(JOINT_WELD, lander, mainThruster, { localAnchorA: { x: 0, y: 17 } });
+    createJoint(JOINT_WELD, lander, leftThruster, { localAnchorA: { x: -3, y: -13 } });
+    createJoint(JOINT_WELD, lander, rightThruster, { localAnchorA: { x: 3, y: -13 } });
+    createJoint(JOINT_WELD, lander, centerVectorRefPoint, { localAnchorA: { x: 0, y: -13 } });
    
     // terrain
     let eachSegmentLength = world.getWidth() / GROUND_SEGMENTS;
@@ -107,14 +107,14 @@ function updateThrusters(){
     if(leftThrusterOn){
         const pos = leftThruster.getPosition();
         const v = getVectorForSprites(leftThruster, centerVectorRefPoint);
-        generateExhaustSprites(pos.x, pos.y, 1, v.x * 1000, v.y * 1000);
-        lander.applyForce({ x: v.x * -SIDE_THRUSTER_FORCE, y: v.y * -SIDE_THRUSTER_FORCE }, pos);
+        generateExhaustSprites(pos.x, pos.y, 1, v.x * -1000, v.y * -1000);
+        lander.applyForce({ x: v.x * SIDE_THRUSTER_FORCE, y: v.y * SIDE_THRUSTER_FORCE }, pos);
     }
     if(rightThrusterOn){
         const pos = leftThruster.getPosition();
         const v = getVectorForSprites(rightThruster, centerVectorRefPoint);
-        generateExhaustSprites(pos.x, pos.y, 1, v.x * 1000, v.y * 1000);
-        lander.applyForce({ x: v.x * -SIDE_THRUSTER_FORCE, y: v.y * -SIDE_THRUSTER_FORCE }, pos);
+        generateExhaustSprites(pos.x, pos.y, 1, v.x * -1000, v.y * -1000);
+        lander.applyForce({ x: v.x * SIDE_THRUSTER_FORCE, y: v.y * SIDE_THRUSTER_FORCE }, pos);
     }
     decayExhaustSprites();
 }
