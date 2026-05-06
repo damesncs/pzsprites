@@ -1,10 +1,10 @@
-import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, createChainSprite, getRandom, renderFrame, setupWorld, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, createPolygonSVGSprite, KEY_ARROW_UP, createCircleSprite, COLLIDER_NONE, createJoint, JOINT_WELD, getVector, getVectorForSprites } from "../../js/pzsprites.js";
+import { COLLIDER_DYNAMIC, COLLIDER_STATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, createChainSprite, getRandom, renderFrame, setupWorld, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, createPolygonSVGSprite, KEY_ARROW_UP, createCircleSprite, createJoint, JOINT_WELD, getVectorForSprites } from "../../js/pzsprites.js";
 
 window.onload = start;
 
 // terrain generation parameters
 const WORLD_WIDTH = 10000;
-const WORLD_HEIGHT = 1000;
+const WORLD_HEIGHT = 1500;
 const GROUND_SEGMENTS = WORLD_WIDTH / 7; 
 const MAX_VERTICAL_CHANGE = 4;
 
@@ -17,6 +17,9 @@ const SIDE_THRUSTER_FORCE = 25;
 const EXHAUST_COLOR = "#f5b207";
 const MAX_EXHAUST_LIFE = 25; // frames
 const LANDER_FILTER_GROUP = -2; // parts of the lander, including exhaust, should not collide (this is mostly for exhaust)
+
+const MAX_CAMERA_SCALE = 3;
+const MIN_CAMERA_SCALE = 1;
 
 let lander;
 let fuel = START_FUEL;
@@ -82,6 +85,7 @@ function drawEachFrame(timestamp){
     let landerPos = lander.getPosition();
     world.setCameraPosition(landerPos.x, landerPos.y);
     world.setCameraScale(cameraScale);
+    getCameraScale();
     updateThrusters();
     renderFrame();
     requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
@@ -102,12 +106,16 @@ function getTerrainVertices(){
     return vertices;
 }
 
+function getCameraScale(){
+    
+}
+
 function updateThrusters(){
     if(mainThrusterOn){
         const pos = mainThruster.getPosition();
         const v = getVectorForSprites(mainThruster, lander);
-        lander.applyForce({ x: v.x * MAIN_THRUSTER_FORCE, y: v.y * MAIN_THRUSTER_FORCE }, pos);
         generateExhaustSprites(pos.x, pos.y, 3, v.x * -1000, v.y * -1000);
+        lander.applyForce({ x: v.x * MAIN_THRUSTER_FORCE, y: v.y * MAIN_THRUSTER_FORCE }, pos);
     }    
     if(leftThrusterOn){
         const pos = leftThruster.getPosition();
@@ -151,8 +159,7 @@ function generateExhaustSprites(atX, atY, maxRadius, xImpulse, yImpulse){
         const life = Math.trunc(getRandom(1, MAX_EXHAUST_LIFE));
         cloud.setLife(life);
         cloud.setFillColor(EXHAUST_COLOR + getOpacityAsHexForLife(life));
-        cloud.setStrokeColor("#00000000");
-        cloud.setStrokeWidth(0);
+        cloud.setStrokeColor("none");
         cloud.setFilterGroupIndex(LANDER_FILTER_GROUP); // don't collide with lander
         cloud.setDensity(0.0001); // physics density
         cloud.resetMassData();

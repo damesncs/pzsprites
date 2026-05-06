@@ -35,7 +35,11 @@ import {
     DistanceJoint,
     WeldJoint,
     WheelJoint,
-    RevoluteJoint
+    RevoluteJoint,
+    DistanceOutput,
+    SimplexCache,
+    DistanceInput,
+    Distance
 } from "./planck.mjs";
 // import { FrictionJoint, GearJoint, MotorJoint, PrismaticJoint, PulleyJoint, RevoluteJoint, RopeJoint, WheelJoint } from "./planck.mjs";
 
@@ -417,7 +421,7 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.getFillColor = () => body.getUserData().fillColor;
     body.setFillColor = (color) => body.setUserDataProp("fillColor", color === "none" ? "#00000000" : color);
     body.getStrokeColor = () => body.getUserData().strokeColor;
-    body.setStrokeColor = (color) => body.setUserDataProp("strokeColor", color);
+    body.setStrokeColor = (color) => body.setUserDataProp("strokeColor", color === "none" ? "#00000000" : color);
     body.setStrokeWidth = (width) => body.setUserDataProp("strokeWidth", width);
     body.setDebug = (debug) => body.setUserDataProp("debug", debug);
     body.addCollisionListener = (fn, tag) => {
@@ -443,6 +447,10 @@ function createSprite(colliderType, initialX, initialY, shape){
         const bodyPos = body.getPosition();
         const otherPos = sprite.getPosition ?  sprite.getPosition() : sprite;
         return {x: otherPos.x - bodyPos.x, y: otherPos.y - bodyPos.y};
+    };
+    // TODO this should be more intelligent - perhaps we need a way to mark which fixture is primary.
+    body.getFirstShape = () => {
+        return body.getFixtureList().getShape();
     };
     // body.createJoint = (jointDef, other) => {
     //     jointDef.bodyA = body;
@@ -845,4 +853,19 @@ export function angleTo(p1, p2) {
     return Math.atan2(p2.x - p1.x, p2.y - p1.y);
 }
 
+/**
+ * note: does NOT work for chain sprites
+ * @param {Sprite} spriteA 
+ * @param {Sprite} spriteB 
+ * @returns {Number} the distance between the closest points on each sprite
+ */
+export function distanceBetween(spriteA, spriteB){
+    const output = new DistanceOutput();
+    const cache = new SimplexCache();
+    const input = new DistanceInput();
+    input.proxyA.set(spriteA.getFirstShape(), 0);
+    input.proxyB.set(spriteB.getFirstShape(), 0);
+    const d = new Distance(output, cache, input);
+    return output.distance;
+}
 
