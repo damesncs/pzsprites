@@ -567,6 +567,25 @@ export function addCollisionListenerForSprite(sprite, listenerFn){
 }
 
 /**
+ * Add a collision listener function which will be called when a collision occurs between
+ * two specific sprites. The sprites will be passed to the listener function in the same order.
+ * @param {Sprite} spriteA 
+ * @param {Sprite} spriteB 
+ * @param {collisionListener} listenerFn 
+ */
+export function addCollisionListenerForSprites(spriteA, spriteB, listenerFn){
+    const callback = (contact) => {
+        const contactedSprite1 = contact.getFixtureA().getBody();
+        const contactedSprite2 = contact.getFixtureB().getBody();
+        if((spriteA === contactedSprite1 && spriteB === contactedSprite2) ||
+            (spriteB === contactedSprite1 && spriteA === contactedSprite2)){
+            listenerFn(spriteA, spriteB, contact);
+        } 
+    };
+    _world.on("pre-solve", callback);
+}
+
+/**
  * Add a collision listener function which will be called when a collision occurs
  * which involves the given sprite with a sprite with the given tag.
  * The given sprite will be passed to the listener as the first parameter (spriteA).
@@ -863,8 +882,11 @@ export function distanceBetween(spriteA, spriteB){
     const output = new DistanceOutput();
     const cache = new SimplexCache();
     const input = new DistanceInput();
+    input.useRadii = true;
     input.proxyA.set(spriteA.getFirstShape(), 0);
     input.proxyB.set(spriteB.getFirstShape(), 0);
+    input.transformA.set(spriteA.getTransform());
+    input.transformB.set(spriteB.getTransform());
     const d = new Distance(output, cache, input);
     return output.distance;
 }
