@@ -18,9 +18,7 @@
 */
 
 // TODO - 
-// - collision listener for two specific sprites
-// - test removing sprites
-// - fixture z-index 
+// - fixture/body z-index 
 
 import { 
     World,
@@ -41,7 +39,6 @@ import {
     DistanceInput,
     Distance
 } from "./planck.mjs";
-// import { FrictionJoint, GearJoint, MotorJoint, PrismaticJoint, PulleyJoint, RevoluteJoint, RopeJoint, WheelJoint } from "./planck.mjs";
 
 let _canvas;
 let _ctx;
@@ -227,8 +224,7 @@ export function renderFrame(){
         if(life !== null && life !== undefined) { // null life means sprite never expires
             if (life <= 0) _bodiesToRemove.push(body);
             else body.setUserDataProp("life", life - 1);
-        }
-        
+        }        
     }
 
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
