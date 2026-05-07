@@ -1,5 +1,5 @@
 /* 
-    pzsprites.js v0.2
+    pzsprites.js v0.2.1
 
     Copyright (C) 2026  David Ames
 
@@ -860,8 +860,8 @@ export function getLinearSpeedFromVector(v) {
 
 /**
  * return the angle in radians from p1 to p2
- * @param {Vec2} p1 
- * @param {Vec2} p2 
+ * @param {Vec2} p1 point
+ * @param {Vec2} p2 point
  * @returns angle in radians
  */
 export function angleTo(p1, p2) {

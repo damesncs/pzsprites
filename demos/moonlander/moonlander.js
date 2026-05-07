@@ -18,7 +18,7 @@ const SIDE_THRUSTER_FUEL_USE = 0.33; // per frame
 
 const EXHAUST_COLOR = "#f5b207";
 const MAX_EXHAUST_LIFE = 25; // frames
-const LANDER_FILTER_GROUP = -2; // parts of the lander, including exhaust, should not collide (this is mostly for exhaust)
+const LANDER_FILTER_GROUP = -2; // things that should not collide with lander should be in this group (such as exhaust)
 
 const MAX_CAMERA_SCALE = 3;
 const MIN_CAMERA_SCALE = 0.5;
@@ -70,7 +70,7 @@ async function start(){
     centerVectorRefPoint = createCircleSprite(COLLIDER_DYNAMIC, landerPos.x, landerPos.y + 13, 0.1);
     centerVectorRefPoint.setFilterGroupIndex(LANDER_FILTER_GROUP);
     
-    createJoint(JOINT_WELD, lander, mainThruster, { localAnchorA: { x: 0, y: 17 } });
+    createJoint(JOINT_WELD, lander, mainThruster, { localAnchorA: { x: 0, y: 17 } }); // local anchor sets the location of the joint on sprite A relative to sprite A origin
     createJoint(JOINT_WELD, lander, leftThruster, { localAnchorA: { x: -3, y: -13 } });
     createJoint(JOINT_WELD, lander, rightThruster, { localAnchorA: { x: 3, y: -13 } });
     createJoint(JOINT_WELD, lander, centerVectorRefPoint, { localAnchorA: { x: 0, y: -13 } });
