@@ -15,6 +15,7 @@ const MAIN_THRUSTER_FORCE = 150;
 const SIDE_THRUSTER_FORCE = 50;
 const MAIN_THRUSTER_FUEL_USE = 1; // per frame
 const SIDE_THRUSTER_FUEL_USE = 0.33; // per frame
+const MAX_LANDING_VELOCITY = 10; // max speed for successful landing
 
 const EXHAUST_COLOR = "#f5b207";
 const MAX_EXHAUST_LIFE = 25; // frames
@@ -132,9 +133,8 @@ function getTerrainVertices(){
 }
 
 function getCameraScale(){
-    const scale = (startingDistance / padDistance) * 0.4 * CAMERA_RANGE + MIN_CAMERA_SCALE;
+    const scale = (startingDistance / padDistance) + MIN_CAMERA_SCALE;
     if(scale > MAX_CAMERA_SCALE) return MAX_CAMERA_SCALE;
-    // if(scale < MIN_CAMERA_SCALE) return MIN_CAMERA_SCALE;
     return scale;
 }
 
@@ -144,9 +144,9 @@ function drawHud(){
     const topMargin = 16;
     const hudVars = [];
     hudVars.push(`Fuel: ${fuel.toFixed(1)}`);
-    hudVars.push(`Velocity: ${getLinearSpeedFromVector(lander.getLinearVelocity()).toFixed(1)}`);
+    hudVars.push(`Velocity: ${getLinearSpeedFromVector(lander.getLinearVelocity()).toFixed(1)} (must be < ${MAX_LANDING_VELOCITY} to land)`);
     hudVars.push(`Distance to pad: ${padDistance.toFixed(1)}`);
-    hudVars.push(`Camera Scale: ${getCameraScale().toFixed(1)}`);
+    hudVars.push(`Camera Scale: ${getCameraScale().toFixed(2)}`);
     hudVars.forEach((t, i) => {
         drawText(leftMargin, i * textSize + topMargin, t, textSize, "limegreen");
     });
@@ -226,7 +226,10 @@ function onGroundCollision(){
 }
 
 function onLandingCollision(){
-    landed = true;
+    if(!crashed && getLinearSpeedFromVector(lander.getLinearVelocity()) < MAX_LANDING_VELOCITY){
+        landed = true;
+    }
+    else crashed = true;
 }
 
 function onKeyPress(e){
