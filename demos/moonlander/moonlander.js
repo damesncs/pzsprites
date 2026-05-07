@@ -109,6 +109,7 @@ function drawEachFrame(timestamp){
     world.setCameraPosition(landerPos.x, landerPos.y);
     world.setCameraScale(getCameraScale());
     updateThrusters();
+    if(crashed) generateCrashingSprites();
     padDistance = distanceBetween(lander, landingPad);
     decayExhaustSprites();
     renderFrame();
@@ -218,6 +219,16 @@ function generateExhaustSprites(atX, atY, maxRadius, xImpulse, yImpulse){
         cloud.resetMassData();
         cloud.applyLinearImpulse({ x: xImpulse + scatterX * 4, y: yImpulse + scatterY * 4}, { x: atX, y: atY });
         exhaustSprites.push(cloud);
+    }
+}
+
+function generateCrashingSprites(){
+    if(fuel > 0){
+        const pos = lander.getPosition();
+        const xImpulse = getRandom(-300, 300);
+        const yImpulse = getRandom(-300, 300);
+        generateExhaustSprites(pos.x, pos.y, 10, xImpulse, yImpulse);
+        fuel -= 10;
     }
 }
 
