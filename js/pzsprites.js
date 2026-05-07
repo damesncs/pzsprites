@@ -1,5 +1,5 @@
 /* 
-    pzsprites.js v0.2
+    pzsprites.js v0.2.1
 
     Copyright (C) 2026  David Ames
 
@@ -18,9 +18,7 @@
 */
 
 // TODO - 
-// - collision listener for two specific sprites
-// - test removing sprites
-// - fixture z-index 
+// - fixture/body z-index 
 
 import { 
     World,
@@ -35,9 +33,12 @@ import {
     DistanceJoint,
     WeldJoint,
     WheelJoint,
-    RevoluteJoint
+    RevoluteJoint,
+    DistanceOutput,
+    SimplexCache,
+    DistanceInput,
+    Distance
 } from "./planck.mjs";
-// import { FrictionJoint, GearJoint, MotorJoint, PrismaticJoint, PulleyJoint, RevoluteJoint, RopeJoint, WheelJoint } from "./planck.mjs";
 
 let _canvas;
 let _ctx;
@@ -192,6 +193,10 @@ export function setupWorld(canvasId, width, height, worldDef, worldWidth, worldH
         _camera.x = x;
         _camera.y = y;
     };
+    _world.setBackgroundColor = (color) => {
+        _world.bkgdColor = color;
+    };
+    _world.setBackgroundColor("white");
     // set camera to center by default
     _world.setCameraPosition(_worldWidth / 2, _worldHeight / 2);
 
@@ -204,6 +209,7 @@ export function renderFrame(){
 
     _ctx.setTransform(1, 0, 0, 1, 0, 0);
     clearCanvas();
+    drawWorldBackground();
     drawBorder();
     _ctx.scale(_camera.scale, _camera.scale);
     const viewableHeight = _canvas.height / _camera.scale;
@@ -218,8 +224,7 @@ export function renderFrame(){
         if(life !== null && life !== undefined) { // null life means sprite never expires
             if (life <= 0) _bodiesToRemove.push(body);
             else body.setUserDataProp("life", life - 1);
-        }
-        
+        }        
     }
 
     for (let joint = _world.getJointList(); joint; joint = joint.getNext()) {
@@ -410,9 +415,9 @@ function createSprite(colliderType, initialX, initialY, shape){
     body.removeTag = (tag) => body.setTags(body.getTags().filter(t => t !== tag));
     body.hasTag = (tag) => body.getTags().indexOf(tag) != -1;
     body.getFillColor = () => body.getUserData().fillColor;
-    body.setFillColor = (color) => body.setUserDataProp("fillColor", color);
+    body.setFillColor = (color) => body.setUserDataProp("fillColor", color === "none" ? "#00000000" : color);
     body.getStrokeColor = () => body.getUserData().strokeColor;
-    body.setStrokeColor = (color) => body.setUserDataProp("strokeColor", color);
+    body.setStrokeColor = (color) => body.setUserDataProp("strokeColor", color === "none" ? "#00000000" : color);
     body.setStrokeWidth = (width) => body.setUserDataProp("strokeWidth", width);
     body.setDebug = (debug) => body.setUserDataProp("debug", debug);
     body.addCollisionListener = (fn, tag) => {
@@ -438,6 +443,10 @@ function createSprite(colliderType, initialX, initialY, shape){
         const bodyPos = body.getPosition();
         const otherPos = sprite.getPosition ?  sprite.getPosition() : sprite;
         return {x: otherPos.x - bodyPos.x, y: otherPos.y - bodyPos.y};
+    };
+    // TODO this should be more intelligent - perhaps we need a way to mark which fixture is primary.
+    body.getFirstShape = () => {
+        return body.getFixtureList().getShape();
     };
     // body.createJoint = (jointDef, other) => {
     //     jointDef.bodyA = body;
@@ -554,6 +563,25 @@ export function addCollisionListenerForSprite(sprite, listenerFn){
 }
 
 /**
+ * Add a collision listener function which will be called when a collision occurs between
+ * two specific sprites. The sprites will be passed to the listener function in the same order.
+ * @param {Sprite} spriteA 
+ * @param {Sprite} spriteB 
+ * @param {collisionListener} listenerFn 
+ */
+export function addCollisionListenerForSprites(spriteA, spriteB, listenerFn){
+    const callback = (contact) => {
+        const contactedSprite1 = contact.getFixtureA().getBody();
+        const contactedSprite2 = contact.getFixtureB().getBody();
+        if((spriteA === contactedSprite1 && spriteB === contactedSprite2) ||
+            (spriteB === contactedSprite1 && spriteA === contactedSprite2)){
+            listenerFn(spriteA, spriteB, contact);
+        } 
+    };
+    _world.on("pre-solve", callback);
+}
+
+/**
  * Add a collision listener function which will be called when a collision occurs
  * which involves the given sprite with a sprite with the given tag.
  * The given sprite will be passed to the listener as the first parameter (spriteA).
@@ -598,7 +626,7 @@ function renderFixture(b, f){
         }               
     } else {
         // draw simple shape
-        if(shapeType === SHAPE_TYPE_POLYGON){
+        if(shapeType === SHAPE_TYPE_POLYGON || (shapeType === SHAPE_TYPE_CHAIN && shape.m_isLoop === true)){
             drawPolygon(getPolygonAbsoluteVertices(b, shape), ud.fillColor, ud.strokeColor, ud.strokeWidth);
         } else if(shapeType === SHAPE_TYPE_CIRCLE){
             drawCircle(pos.x, pos.y, shape.m_radius, ud.fillColor, ud.strokeColor, ud.strokeWidth);
@@ -671,6 +699,7 @@ function drawChain(chain, strokeColor, strokeWidth){
         chain.getChildEdge(edge, i);
         drawEdge(edge, strokeColor, strokeWidth);
     }
+    
 }
 
 function drawEdge(edge, strokeColor, strokeWidth){
@@ -705,6 +734,10 @@ export function drawBorder( strokeColor = "black", strokeWidth = 1){
     _ctx.lineWidth = strokeWidth;
     _ctx.strokeStyle = strokeColor;
     _ctx.strokeRect(0, 0, _canvas.width, _canvas.height);
+}
+
+export function drawWorldBackground(){
+    drawRect(0, 0, _canvas.width, _canvas.height, _world.bkgdColor);
 }
 
 export function drawRect (x, y, width, height, fillColor, strokeColor = "black", strokeWidth = 1) {
@@ -797,8 +830,24 @@ export function destroyJoint(joint) {
     _world.destroyJoint(joint);
 }
 
+/**
+ * Get vector from point A to point B
+ * @param {Vec2} a 
+ * @param {Vec2} b 
+ * @returns  vector from A to B
+ */
 export function getVector(a, b) {
     return { x: b.x - a.x, y: b.y - a.y };
+}
+
+/**
+ * Vector from sprite A to sprite B
+ * @param {Vec2} a 
+ * @param {Vec2} b 
+ * @returns  vector from sprite A to B
+ */
+export function getVectorForSprites(a, b){
+    return getVector(a.getPosition(), b.getPosition());
 }
 
 export function addVectors(v1, v2) {
@@ -811,12 +860,30 @@ export function getLinearSpeedFromVector(v) {
 
 /**
  * return the angle in radians from p1 to p2
- * @param {Vec2} p1 
- * @param {Vec2} p2 
+ * @param {Vec2} p1 point
+ * @param {Vec2} p2 point
  * @returns angle in radians
  */
 export function angleTo(p1, p2) {
     return Math.atan2(p2.x - p1.x, p2.y - p1.y);
 }
 
+/**
+ * note: does NOT work for chain sprites
+ * @param {Sprite} spriteA 
+ * @param {Sprite} spriteB 
+ * @returns {Number} the distance between the closest points on each sprite
+ */
+export function distanceBetween(spriteA, spriteB){
+    const output = new DistanceOutput();
+    const cache = new SimplexCache();
+    const input = new DistanceInput();
+    input.useRadii = true;
+    input.proxyA.set(spriteA.getFirstShape(), 0);
+    input.proxyB.set(spriteB.getFirstShape(), 0);
+    input.transformA.set(spriteA.getTransform());
+    input.transformB.set(spriteB.getTransform());
+    const d = new Distance(output, cache, input);
+    return output.distance;
+}
 

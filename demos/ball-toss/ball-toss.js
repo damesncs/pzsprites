@@ -72,7 +72,9 @@ async function start() {
         { x: world.getWidth(), y: world.getHeight() },
         { x: 0, y: world.getHeight() }
     ];
-    createChainSprite(COLLIDER_STATIC, walls, true);
+    const wallsChain = createChainSprite(COLLIDER_STATIC, walls, true);
+    wallsChain.setFillColor("none"); // transparent
+    
 
     createRandomObstacles(8);
     addCollisionListenerForTag(OBSTACLE_TAG, onObstacleCollision);
