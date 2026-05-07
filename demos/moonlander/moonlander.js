@@ -20,8 +20,9 @@ const EXHAUST_COLOR = "#f5b207";
 const MAX_EXHAUST_LIFE = 25; // frames
 const LANDER_FILTER_GROUP = -2; // things that should not collide with lander should be in this group (such as exhaust)
 
-const MAX_CAMERA_SCALE = 3;
-const MIN_CAMERA_SCALE = 0.5;
+const MAX_CAMERA_SCALE = 2;
+const MIN_CAMERA_SCALE = 0.25;
+const CAMERA_RANGE = MAX_CAMERA_SCALE - MIN_CAMERA_SCALE;
 
 let lander;
 let fuel = START_FUEL;
@@ -45,6 +46,7 @@ let ground;
 let world;
 
 let crashed = false;
+let landed = false;
 
 async function start(){
     world = setupWorld("canvas", 1000, 600); // i.e., viewport
@@ -93,6 +95,7 @@ async function start(){
     startingDistance = distanceBetween(lander, landingPad);
 
     addCollisionListenerForSprites(ground, lander, onGroundCollision);
+    addCollisionListenerForSprites(lander, landingPad, onLandingCollision);
 
     addEventListener(EVENT_KEY_PRESSED, onKeyPress);
     addEventListener(EVENT_KEY_RELEASED, onKeyRelease);
@@ -109,7 +112,7 @@ function drawEachFrame(timestamp){
     decayExhaustSprites();
     renderFrame();
     drawHud();
-    if(crashed) drawGameOver();
+    drawGameOver();
     requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
 }
 
@@ -129,12 +132,11 @@ function getTerrainVertices(){
 }
 
 function getCameraScale(){
-    const scale = (padDistance * MAX_CAMERA_SCALE / world.getWidth());
+    const scale = (startingDistance / padDistance) * 0.4 * CAMERA_RANGE + MIN_CAMERA_SCALE;
     if(scale > MAX_CAMERA_SCALE) return MAX_CAMERA_SCALE;
-    if(scale < MIN_CAMERA_SCALE) return MIN_CAMERA_SCALE;
+    // if(scale < MIN_CAMERA_SCALE) return MIN_CAMERA_SCALE;
     return scale;
 }
-
 
 function drawHud(){
     const textSize = 16;
@@ -151,7 +153,8 @@ function drawHud(){
 }
 
 function drawGameOver(){
-    drawText(400, 150, "Crashed!", 42, "red");
+    if (crashed) drawText(400, 150, "Crashed!", 42, "red");
+    if (landed) drawText(400, 150, "Success!", 42, "green");
 }
 
 function updateThrusters(){
@@ -220,6 +223,10 @@ function generateExhaustSprites(atX, atY, maxRadius, xImpulse, yImpulse){
 
 function onGroundCollision(){
     crashed = true;
+}
+
+function onLandingCollision(){
+    landed = true;
 }
 
 function onKeyPress(e){
