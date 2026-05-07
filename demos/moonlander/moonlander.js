@@ -223,27 +223,21 @@ function onGroundCollision(){
 }
 
 function onKeyPress(e){
-    if(e.key === KEY_ARROW_UP){
-        // main thruster
+    if(e.key === KEY_ARROW_UP){        
         mainThrusterOn = true;
-    } else if(e.key === KEY_ARROW_LEFT){
-       // right thruster
+    } else if(e.key === KEY_ARROW_LEFT){       
        rightThrusterOn = true;
-    } else if(e.key === KEY_ARROW_RIGHT){ 
-       // left thruster
+    } else if(e.key === KEY_ARROW_RIGHT){        
        leftThrusterOn = true;
     }
 }   
 
 function onKeyRelease(e){
     if(e.key === KEY_ARROW_UP){
-        // main thruster
         mainThrusterOn = false;
     } else if(e.key === KEY_ARROW_LEFT){
-       // right thruster
        rightThrusterOn = false;
     } else if(e.key === KEY_ARROW_RIGHT){ 
-       // left thruster
        leftThrusterOn = false;
     }
 }
