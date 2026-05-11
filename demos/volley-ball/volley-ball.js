@@ -1,4 +1,7 @@
-import { setupWorld, createRectSprite, COLLIDER_STATIC, COLLIDER_DYNAMIC, renderFrame, COLLIDER_KINEMATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, createCircleSprite, getRandom } from "../../js/pzsprites.js";
+import { setupWorld, createRectSprite, COLLIDER_STATIC, COLLIDER_DYNAMIC, 
+    renderFrame, COLLIDER_KINEMATIC, EVENT_KEY_PRESSED, EVENT_KEY_RELEASED, 
+    createCircleSprite, getRandom, createPolygonSprite, 
+    PLANCK,  } from "../../js/pzsprites.js";
 
 
 window.onload = start;
@@ -30,11 +33,25 @@ async function start() {
     ground = createRectSprite(COLLIDER_STATIC, 0, 500, 1600, 10);
     ground.setFillColor("red");
 
-    leftHitter = createRectSprite(COLLIDER_KINEMATIC, 200, 490, 100, 10);
-    leftHitter.setFillColor("blue");
+   const leftVertices = [
+        {x: 0, y: 0},
+        {x: 100, y: 0},
+        {x: 0, y: -100}
+      ];
+      
+    //  let polygon = new Polygon(vertices);
+    leftHitter = createPolygonSprite(COLLIDER_KINEMATIC, 200, 500, leftVertices);
+    leftHitter.setFillColor("green");
     //leftHitter.setLinearVelocity()
+    
+    const rightVertices = [
+        {x: 100, y:0},
+        {x: 0, y: -100},
+        {x: 0, y:0}
 
-    rightHitter = createRectSprite(COLLIDER_KINEMATIC, 600, 490, 100, 10);
+    ]
+
+    rightHitter = createPolygonSprite(COLLIDER_KINEMATIC, 600, 490, rightVertices);
     rightHitter.setFillColor("blue");
     ball = createCircleSprite(COLLIDER_DYNAMIC,getRandom(0,world.getWidth()), 0, 10 );
     ball.setFillColor("yellow");
