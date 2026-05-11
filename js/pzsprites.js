@@ -196,6 +196,9 @@ export function setupWorld(canvasId, width, height, worldDef, worldWidth, worldH
     _world.setBackgroundColor = (color) => {
         _world.bkgdColor = color;
     };
+    _world.getWorldPointFromCanvasPoint = (canvasX, canvasY) => {
+        
+    };
     _world.setBackgroundColor("white");
     // set camera to center by default
     _world.setCameraPosition(_worldWidth / 2, _worldHeight / 2);

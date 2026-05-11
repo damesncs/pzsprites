@@ -34,15 +34,18 @@ let hangingBall;
 let cursorForce = 4000; // the force the mouse cursor exerts on the dragging ball
 let mouseX = 0, mouseY = 0;
 let mouseDragging = false;
+let cameraScale = 1;
 
 async function start() {
-    world = setupWorld("canvas", 800, 500);
+    world = setupWorld("canvas", 800, 800);
+    world.setWorldDimensions(1000, 1000);
     
-    box = createRectSprite(COLLIDER_DYNAMIC, 100, 100, 40, 40);
+    
+    box = createRectSprite(COLLIDER_DYNAMIC, 25, 25, 10, 10);
     box.setFillColor("red");
     box.addCollisionListener(onBigRedBoxBallCollision, BALL_TAG);
 
-    bigBall = createCircleSprite(COLLIDER_DYNAMIC, 200, 100, 20);
+    bigBall = createCircleSprite(COLLIDER_DYNAMIC, 50, 25, 5);
     bigBall.setBounciness(0.5);
     bigBall.setFillColor("#ffffff00"); // transparent
     // add an extra rectangle to this ball to see it rolling
@@ -50,10 +53,10 @@ async function start() {
         shape: new PLANCK.Box(bigBall.radius, 1)
     });
 
-    ledge = createRectSprite(COLLIDER_STATIC, 400, 400, 400, 10);
+    ledge = createRectSprite(COLLIDER_STATIC, 100, 100, 100, 2.5);
     ledge.addCollisionListener(onLedgeBallCollision, BALL_TAG);
 
-    hangingBall = createCircleSprite(COLLIDER_DYNAMIC, 400, 450, 15);
+    hangingBall = createCircleSprite(COLLIDER_DYNAMIC, 100, 112.25, 15);
     createJoint(JOINT_DISTANCE, hangingBall, ledge, { collideConnected: true });
 
     const rampVertices = [
@@ -82,11 +85,14 @@ async function start() {
     addEventListener("mousedown", onMouseDown);
     addEventListener("mouseup", onMouseUp);
     addEventListener("mousemove", onMouseMove);
+    addEventListener("wheel", onMouseWheel);
 
     drawEachFrame(0); // begin the animation loop
 }
 
 function drawEachFrame(timestamp){
+    world.setCameraPosition(mouseX, mouseY);
+    world.setCameraScale(cameraScale);
     applyMouseForceToDraggingBall();
     renderFrame();
     requestAnimationFrame(drawEachFrame); // ask the browser to call this function again when ready
@@ -113,13 +119,22 @@ function onLedgeBallCollision(ledge, ball, contact){
 
 function createRandomObstacles(count){
     for(let i = 0; i < count; i++){
-        const width = getRandom(5, 50);
-        const height = getRandom(5, 50);
+        const width = getRandom(2, 10);
+        const height = getRandom(2, 10);
         const x = getRandom(0, world.getWidth() - width);
         const y = getRandom(0, world.getHeight() - height);
         let obstacle = createRectSprite(COLLIDER_STATIC, x, y, width, height);
         obstacle.addTag(OBSTACLE_TAG);
     }
+}
+
+function createNewBall(isDragging){
+    let newBall = createCircleSprite(COLLIDER_DYNAMIC, mouseX, mouseY, 15);
+    newBall.setStrokeColor("limegreen");
+    newBall.setBounciness(0.3);
+    newBall.setDensity(3);
+    newBall.addTag(BALL_TAG);
+    if(isDragging) draggingBall = newBall;
 }
 
 function onMouseMove(e){
@@ -135,6 +150,7 @@ function onMouseUp(e){
 }
 
 function onMouseDown(e){
+    
     mouseX = e.offsetX;
     mouseY = e.offsetY;
 
@@ -154,11 +170,9 @@ function onMouseDown(e){
     }   
 }
 
-function createNewBall(isDragging){
-    let newBall = createCircleSprite(COLLIDER_DYNAMIC, mouseX, mouseY, 15);
-    newBall.setStrokeColor("limegreen");
-    newBall.setBounciness(0.3);
-    newBall.setDensity(3);
-    newBall.addTag(BALL_TAG);
-    if(isDragging) draggingBall = newBall;
+function onMouseWheel(e){
+    if(e.deltaMode === WheelEvent.DOM_DELTA_PIXEL){
+        console.log(e);
+        cameraScale += (e.deltaY / 2500);
+    }
 }
