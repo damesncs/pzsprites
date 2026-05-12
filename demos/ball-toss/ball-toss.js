@@ -105,14 +105,14 @@ async function loadStates() {
 /* =========================================================
 PLAYER CONTROLLER (EVENT-DRIVEN)
 ========================================================= */
-function createPlayerController(body) {
+function createPlayerController(player) {
     return {
-        body,
+        player,
         groundedCount: 0,
         currentState: STATE.IDLE,
 
         update() {
-            const vel = this.body.getLinearVelocity();
+            const vel = this.player.getLinearVelocity();
 
             /* -------------------------
                MOVEMENT
@@ -121,20 +121,9 @@ function createPlayerController(body) {
             if (Input.down(KEY_ARROW_LEFT)) x = -CONFIG.player.speed;
             if (Input.down(KEY_ARROW_RIGHT)) x = CONFIG.player.speed;
 
-            this.body.setLinearVelocity({ x, y: vel.y });
+            this.player.setLinearVelocity({ x, y: vel.y });
 
-            /* -------------------------
-               JUMP
-            ------------------------- */
-            const grounded = this.groundedCount > 0;
-
-            if (Input.down(KEY_ARROW_UP) && grounded) {
-                this.body.setLinearVelocity({
-                    x: vel.x,
-                    y: -CONFIG.player.jumpForce
-                });
-            }
-
+           
             /* -------------------------
                ANIMATION STATE
             ------------------------- */
@@ -153,13 +142,13 @@ function createPlayerController(body) {
                 else newState = STATE.IDLE;
             }
 
-            this.setState(newState);
+            player.paths = STATE_MAP[state];
         },
 
         setState(state) {
             if (state === this.currentState) return;
             this.currentState = state;
-            this.body.paths = STATE_MAP[state];
+            player.paths = STATE_MAP[state];
         }
     };
 }
@@ -173,18 +162,34 @@ let player;
 GAME LOOP
 ========================================================= */
 function loop() {
-    player.update();
+    stateSet();
     renderFrame();
     requestAnimationFrame(loop);
 }
 
+/* -------------------------
+  STATE SYSTEM
+------------------------- */
+function stateSet(){
+    if (!grounded) {
+    if (vel.x > 1) newState = STATE.JUMP_RIGHT;
+    else if (Input.down(KEY_ARROW_LEFT)) newState = STATE.JUMP_LEFT;
+    else newState = STATE.JUMP_FORWARD;
+} else {
+    if (left) newState = STATE.LEFT;
+    else if (right) newState = STATE.RIGHT;
+    else newState = STATE.IDLE;
+}
+
+player.paths = STATE_MAP[state];
+}
 /* =========================================================
 BOOT
 ========================================================= */
 async function start() {
     await loadStates();
 
-    const body = await createPolygonSVGSprite(
+    player = await createPolygonSVGSprite(
         COLLIDER_DYNAMIC,
         100,
         100,
@@ -192,42 +197,27 @@ async function start() {
         CONFIG.player.scale
     );
 
-    body.setFixedRotation(true);
-    body.setFriction(0.2);
-    body.setDebug(true);
+    player.setFixedRotation(true);
+    player.setFriction(0.2);
+    player.setDebug(true);
 
-    const controller = createPlayerController(body);
+    const controller = createPlayerController(player);
     player = controller;
 
-    /* -------------------------
-       COLLISION SYSTEM
-    ------------------------- */
+  /* -------------------------
+   COLLISION SYSTEM
+------------------------- */
 
-    // ENTER PLATFORM CONTACT
-    addCollisionListenerForSpriteWithTag(
-        body,
-        "platform",
-        (playerBody, platformBody, contact) => {
-            controller.groundedCount++;
-        }
-    );
+const groundContacts = new Set();
 
-    // EXIT PLATFORM CONTACT
-    addCollisionListener((a, b) => {
-        const playerTouched =
-            a === body || b === body;
+addCollisionListenerForSpriteWithTag(
+    player,
+    "platform",
+    () => {
+        const touching = contact.isTouching();
 
-        if (!playerTouched) return;
-
-        const other = a === body ? b : a;
-
-        if (other.hasTag && other.hasTag("platform")) {
-            controller.groundedCount = Math.max(
-                0,
-                controller.groundedCount - 1
-            );
-        }
-    });
+    }
+);
 
     loop();
 }

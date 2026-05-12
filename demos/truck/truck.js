@@ -48,8 +48,8 @@ function start(){
     // player
     player = createCircleSprite(COLLIDER_DYNAMIC, 200, 200, 15);
     player.setFillColor("blue");
-    player.setBounciness(0.2);
-    player.setDensity(2);
+    player.setBounciness(9999);
+    player.setDensity(0.1);
 
     // platforms
     for (let i = 0; i < 30; i++){
