@@ -46,12 +46,12 @@ async function start() {
     
     const rightVertices = [
         {x: 100, y:0},
-        {x: 0, y: -100},
+        {x: 100, y: -100},
         {x: 0, y:0}
 
     ]
 
-    rightHitter = createPolygonSprite(COLLIDER_KINEMATIC, 600, 490, rightVertices);
+    rightHitter = createPolygonSprite(COLLIDER_KINEMATIC, 600, 500, rightVertices);
     rightHitter.setFillColor("blue");
     ball = createCircleSprite(COLLIDER_DYNAMIC,getRandom(0,world.getWidth()), 0, 10 );
     ball.setFillColor("yellow");
@@ -84,38 +84,38 @@ function drawEachFrame(timestamp){
 }
 
 function onKeyPress(e){
-    if(e.key === "a"){
+    if(e.code === "KeyA"){
         leftHitter.setLinearVelocity({x:-250, y:0});
     } 
 
-    if(e.key === "d"){
+    if(e.code === "KeyD"){
         leftHitter.setLinearVelocity({x:250, y:0});
     }
 
-    if(e.key === "j"){
+    if(e.code === "KeyJ"){
         rightHitter.setLinearVelocity({x:-250, y:0});
     } 
 
-    if(e.key === "l"){
+    if(e.code === "KeyL"){
         rightHitter.setLinearVelocity({x:250, y:0});
     }
     
 }
 
 function onKeyRelease(e){
-    if(e.key ==="a"){
+    if(e.code ==="KeyA"){
         leftHitter.setLinearVelocity({x:0, y:0});
     }
 
-    if(e.key === "d"){
+    if(e.code === "KeyD"){
         leftHitter.setLinearVelocity({x:0, y:0});
     }
 
-    if(e.key ==="j"){
+    if(e.code ==="KeyJ"){
         rightHitter.setLinearVelocity({x:0, y:0});
     }
 
-    if(e.key === "l"){
+    if(e.code === "KeyL"){
         rightHitter.setLinearVelocity({x:0, y:0});
     }
     
